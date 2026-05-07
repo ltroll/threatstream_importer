@@ -19,6 +19,7 @@ from urllib.request import Request, urlopen
 
 DEFAULT_BASE_URL = "https://api.threatstream.com"
 DEFAULT_TIMEOUT = 30
+DEFAULT_TAG_TLP = "red"
 INDICATOR_FIELDS = {
     "domain": "domain",
     "email": "email",
@@ -94,7 +95,7 @@ def build_payload(
     severity: str | None = None,
     allow_unresolved: bool | None = None,
     source_confidence_weight: int | None = None,
-    tag_tlp: str | None = None,
+    tag_tlp: str | None = DEFAULT_TAG_TLP,
 ) -> dict[str, Any]:
     """Build the JSON payload expected by ThreatStream's direct import API."""
 
@@ -143,7 +144,7 @@ def submit_indicator(
     severity: str | None = None,
     allow_unresolved: bool | None = None,
     source_confidence_weight: int | None = None,
-    tag_tlp: str | None = None,
+    tag_tlp: str | None = DEFAULT_TAG_TLP,
     timeout: int = DEFAULT_TIMEOUT,
 ) -> dict[str, Any]:
     """Submit a single indicator and return status/body details.
@@ -290,7 +291,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--tag-tlp",
         choices=["red", "amber", "amber+strict", "green", "clear", "white"],
         default=None,
-        help="Optional TLP visibility applied to every tag.",
+        help="TLP visibility applied to every tag. Defaults to red, which makes tags private.",
     )
     parser.add_argument(
         "--dry-run",
@@ -317,7 +318,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.allow_unresolved is not None
         else _env_bool("THREATSTREAM_ALLOW_UNRESOLVED")
     )
-    tag_tlp = args.tag_tlp or os.environ.get("THREATSTREAM_TAG_TLP")
+    tag_tlp = args.tag_tlp or os.environ.get("THREATSTREAM_TAG_TLP") or DEFAULT_TAG_TLP
 
     payload = build_payload(
         args.indicator,

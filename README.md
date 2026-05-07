@@ -122,7 +122,7 @@ Common optional arguments:
 - `--severity` - `low`, `medium`, `high`, or `very-high`.
 - `--allow-unresolved` - sends `allow_unresolved: true` in the `meta` object.
 - `--source-confidence-weight` - integer from `0` to `100`.
-- `--tag-tlp` - applies a tag visibility value to every submitted tag.
+- `--tag-tlp` - applies a tag visibility value to every submitted tag. Defaults to `red`, which makes tags private.
 
 ## Import From Python
 
@@ -154,4 +154,4 @@ calling `submit_indicator`.
 - For domain indicators, the payload uses the ThreatStream `domain` field.
 - For email indicators, the payload uses the ThreatStream `email` field.
 - For URL indicators, the payload uses the ThreatStream `url` field.
-- Tags are sent as ThreatStream tag objects, for example `{"name": "case-123"}`.
+- Tags are private by default and are sent as ThreatStream tag objects, for example `{"name": "case-123", "tlp": "red"}`.
