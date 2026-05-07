@@ -20,8 +20,10 @@ from urllib.request import Request, urlopen
 DEFAULT_BASE_URL = "https://api.threatstream.com"
 DEFAULT_TIMEOUT = 30
 INDICATOR_FIELDS = {
-    "ip": "srcip",
     "domain": "domain",
+    "email": "email",
+    "ip": "srcip",
+    "url": "url",
 }
 
 
@@ -240,9 +242,12 @@ def _env_int(name: str, default: int | None = None) -> int | None:
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Submit an IP or domain indicator to ThreatStream without UI approval."
+        description="Submit an IP, domain, email, or URL indicator to ThreatStream without UI approval."
     )
-    parser.add_argument("indicator", help="Indicator value, for example 1.2.3.4 or example.com")
+    parser.add_argument(
+        "indicator",
+        help="Indicator value, for example 1.2.3.4, example.com, user@example.com, or https://example.com/path",
+    )
     parser.add_argument(
         "-t",
         "--tags",

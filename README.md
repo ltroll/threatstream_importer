@@ -1,6 +1,6 @@
 # ThreatStream Indicator Submitter
 
-Submit IP and domain indicators to Anomali ThreatStream from the command line or from another
+Submit IP, domain, email, and URL indicators to Anomali ThreatStream from the command line or from another
 Python script. The script uses the ThreatStream direct import API, which imports valid JSON without
 requiring approval in the ThreatStream UI:
 
@@ -70,6 +70,25 @@ python3 threatstream_submit.py bad.example.com \
   --allow-unresolved
 ```
 
+Submit an email:
+
+```bash
+python3 threatstream_submit.py user@example.com \
+  --indicator-type email \
+  --itype compromised_email \
+  --tags case-123,phishing \
+  --confidence 80
+```
+
+Submit a URL:
+
+```bash
+python3 threatstream_submit.py https://bad.example.com/login \
+  --indicator-type url \
+  --itype phish_url \
+  --tags case-123,phishing
+```
+
 Preview the JSON payload without submitting:
 
 ```bash
@@ -92,8 +111,8 @@ python3 threatstream_submit.py example.com \
 Required CLI arguments:
 
 - `indicator` - the indicator value, such as `1.2.3.4` or `bad.example.com`.
-- `--indicator-type` - currently `ip` or `domain`.
-- `--itype` - the ThreatStream indicator type, such as `mal_ip`, `bot_ip`, or `mal_domain`.
+- `--indicator-type` - currently `ip`, `domain`, `email`, or `url`.
+- `--itype` - the ThreatStream indicator type, such as `mal_ip`, `bot_ip`, `mal_domain`, `compromised_email`, or `phish_url`.
 
 Common optional arguments:
 
@@ -133,4 +152,6 @@ calling `submit_indicator`.
 - The script never prints the username or API key.
 - For IP indicators, the payload uses the ThreatStream `srcip` field.
 - For domain indicators, the payload uses the ThreatStream `domain` field.
+- For email indicators, the payload uses the ThreatStream `email` field.
+- For URL indicators, the payload uses the ThreatStream `url` field.
 - Tags are sent as ThreatStream tag objects, for example `{"name": "case-123"}`.
