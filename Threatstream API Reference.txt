@@ -1,3 +1,65 @@
+Accessing the API
+To access the API, use the following base URL:
+https://api.threatstream.com/api/<api_version>/<resource>/
+where
+<api_version> is either v1 or v2. Refer to each API call to determine the version to use.
+<resource> is API endpoint; for example, import, intelligence, tipreport
+Authenticating to ThreatStream with an API Key
+Making requests through the API requires authenticating to ThreatStream using your username—the
+email address associated with your ThreatStream account—and your dedicated API Key. You can
+reference your username and API Key on the My Profile tab within ThreatStream settings.
+Reference Guide
+Introduction
+Anomali ThreatStream API Page 8 of 262
+Specifying your username and API Key in the header of the request is the most secure method of
+authentication. Anomali recommends using this authentication method, as shown in the following
+example:
+curl 'https://api.threatstream.com/api/v2/intelligence/?itype=bot_ip' -H
+'Authorization: apikey <username>:<api_key>'
+Note: Specifying usernames and API Keys in the URL of the request will be deprecated as an
+available authentication method for ThreatStream in a future release.
+Authenticating to ThreatStream with an OAuth 2.0 Token
+Note: This is a limited-availability feature that can only be enabled for organizations with the
+User & Role Management feature.
+For integrating with third-party applications, you can generate an OAuth 2.0 token for accessing
+ThreatStream API points securely.
+Before you begin
+Ensure you have the following:
+l Client ID and Secret Key. Client ID and Secret Key are generated in the ThreatStream UI on the
+Account Settings page.
+l The OAuth token endpoint provided by ThreatStream.
+l curl or any other tool to make HTTP requests (for example, Postman).
+Reference Guide
+Introduction
+Anomali ThreatStream API Page 9 of 262
+To generate an OAuth 2.0 token: 
+1. Enter the following curl command to request a token:
+curl -X POST https://api.threatstream.com/oauth/token \
+-H "Content-Type: application/x-www-form-urlencoded" \
+-d "grant_type=client_credentials" \
+-d "client_id=<YOUR_CLIENT_ID>" \
+-d "client_secret=<YOUR_CLIENT_SECRET>"
+If the request is successful, you will receive a JSON response similar to this:
+{
+"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+"token_type": "Bearer",
+"expires_in": 900
+}
+2. Copy the value of the access_token field. This token is valid for 15 minutes (900 seconds), as
+specified in the expires_in field. If it expires, you will have to generate a new token.
+3. Include the token in the Authorization header when making API requests.
+For example,
+curl -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
+https://api.threatstream.com/api/v2/intelligence/
+Using Operators
+The first API operator called after the resource must start with a question mark and subsequent
+operators must begin with an ampersand.
+Example:
+curl 'https://api.threatstream.com/api/v2/intelligence/?itype=bot_
+ip&status=active' -H 'Authorization: apikey <username>:<api_key>'
+
+
+
 Import
 The approach you use to import data into ThreatStream depends largely on the data set you are
 importing. For most imports, you will want to import the data through the API, and then review it within
@@ -865,3 +927,1729 @@ where indicators.json contains the following data:
 }
 In the above example, the confidence value specified for the first observable overrides the
 globally specified confidence value.
+
+
+Appendix B: Indicator Types in
+ThreatStream
+The following table lists all available indicator types in ThreatStream.
+The severity values listed in the table below represent the default severity values that Anomali
+assigns to observables of a given indicator types. However, default values are not displayed in the
+following cases:
+1. When severity value assigned to an observable by the source is used.
+2. When users modify the assigned value while editing observables that belong to their
+organizations on ThreatStream.
+Notes:
+- Observables assigned indicator types which display String in the Type column below are not
+consumed by downstream integrations such as Anomali Security Analytics or those which
+receive intelligence through ThreatStream Integrator. Additionally, string-type observables
+cannot be cloned in ThreatStream.
+- MD5 observables ingested from feeds are never made inactive by ThreatStream API.
+However, MD5 observables imported through other means, such as the import assistant, adhere
+to the expiration dates you set.
+Indicator Type Name Type Severity Description
+actor_ip Actor IP IP Low IP address associated with a
+system involved in a malicious
+activity.
+Example: itype="actor_ip"
+actor_ipv6 Actor IPv6 IP Low IPv6 address associated with a
+system involved in a malicious
+activity.
+Example: itype="actor_ipv6"
+actor_phone_
+number
+Actor Phone
+Number
+String Low Phone number associated with a
+threat actor.
+Example: itype="actor_phone_
+number"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 220 of 262
+Indicator Type Name Type Severity Description
+actor_subject Actor Subject
+Line
+String High Subject from an email associated
+with a threat actor.
+Example: itype="actor_subject"
+actor_username Actor Username String Low Username associated with a
+threat actor.
+Example: itype="actor_
+username"
+adware_domain Adware Domain Domain Low Domain name associated with
+adware or other Potentially
+Unwanted Applications (PUA).
+Example: itype="adware_
+domain"
+adware_
+registry_key
+Adware Registry
+Key
+String Low Registry key associated with
+adware or other Potentially
+Unwanted Applications (PUA).
+Example: itype="adware_
+registry_key"
+anon_proxy Anonymous
+Proxy IP
+IP Low IP address of the system on
+which anonymous proxy software
+is hosted.
+Example: itype="anon_proxy"
+anon_proxy_
+ipv6
+Anonymous
+Proxy IPv6
+IP Low IPv6 address of the system on
+which anonymous proxy software
+is hosted.
+Example: itype="anon_proxy_
+ipv6"
+anon_vpn Anonymous
+VPN IP
+IP Low IP address associated with
+commercial or free Virtual Private
+Networks (VPN).
+Example: itype="anon_vpn"
+anon_vpn_ipv6 Anonymous IP Low IPv6 address associated with
+commercial or free Virtual Private
+Networks (VPN).
+Example: itype:"anon_vpn_ipv6"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 221 of 262
+Indicator Type Name Type Severity Description
+apt_domain APT Domain Domain Very High Domain name associated with a
+known Advanced Persistent
+Threat (APT) actor used for
+command and control, launching
+exploits, or data exfiltration.
+Example: itype=" apt_domain"
+apt_email APT Email Email High Email address used by a known
+Advanced Persistent Threat
+(APT) actor for sending targeted,
+spear phishing emails.
+Example: itype="apt_email"
+apt_email_
+subject_line
+APT Email
+Subject Line
+String High Subject from an email associated
+with an Advanced Persistent
+Threat (APT) actor.
+Example: itype="apt_email_
+subject_line"
+apt_file_name APT File Name String Very High Name of a file used by a known
+Advanced Persistent Threat
+(APT) actor.
+Example: itype="apt_file_name"
+apt_file_path APT File Path String Very High File path used by a known
+Advanced Persistent Threat
+(APT) actor.
+Example: itype="apt_file_path"
+apt_ip APT IP IP Very High IP address associated with
+known Advanced Persistent
+Threat (APT) actor for command
+and control, data exfiltration, or
+targeted exploitation.
+Example: itype="apt_ip"
+apt_ipv6 APT IPv6 IP Very High IPv6 address associated with
+known Advanced Persistent
+Threat (APT) actor for command
+and control, data exfiltration, or
+targeted exploitation.
+Example: itype="apt_ipv6"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 222 of 262
+Indicator Type Name Type Severity Description
+apt_md5 APT File Hash Hash Very High MD5 or SHA hash of a malware
+sample used by a known
+Advanced Persistent Threat
+(APT) actor.
+Example: itype="apt_md5"
+apt_mta APT Mail
+Transfer Agent
+String Very High Mail transfer agent used by a
+known Advanced Persistent
+Threat (APT) actor.
+Example: itype="apt_mta"
+apt_mutex APT Mutex String Very High Mutex used by a known
+Advanced Persistent Threat
+(APT) actor.
+Example: itype="apt_mutex"
+apt_registry_key APT Registry
+Key
+String Very High Registry key used by a known
+Advanced Persistent Threat
+(APT) actor.
+Example: itype="apt_registry_
+key"
+apt_service_
+description
+APT Service
+Description
+String Very High Description used by a known
+Advanced Persistent Threat
+(APT) actor.
+Example: itype="apt_service_
+description"
+apt_service_
+displayname
+APT Service
+Display Name
+String Very High Service display name used by a
+known Advanced Persistent
+Threat (APT) actor.
+Example: itype="apt_service_
+displayname"
+apt_service_
+name
+APT Service
+Name
+String Very High Service name used by a known
+Advanced Persistent Threat
+(APT) actor.
+Example: itype="apt_service_
+name"
+apt_ssdeep APT SSDeep
+Hash
+String Very High SSDeep Hash used by a known
+Advanced Persistent Threat
+(APT) actor.
+Example: itype="apt_ssdeep"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 223 of 262
+Indicator Type Name Type Severity Description
+apt_subject APT Subject Line String High Email subject line used by a
+known Advanced Persistent
+Threat (APT) actor.
+Example: itype="apt_subject"
+apt_ua APT User Agent String High User agent string used by a
+known Advanced Persistent
+Threat (APT) actor.
+Example: itype="apt_ua"
+apt_url APT URL URL Very High URL used by a known Advanced
+Persistent Threat (APT) actor for
+command and control, launching
+web based exploits, or data
+exfiltration.
+Example: itype=" apt_url"
+asn ASN String Medium Autonomous System Number
+Example: itype="asn"
+aws_account_id AWS Account ID String High AWS account identifier
+potentially involved in malicious
+activities.
+Example: itype="aws_account_
+id"
+benign_device_
+id
+Benign Device ID String Low Trusted device identifier.
+Example: itype="benign_device_
+id"
+benign_domain Benign Domain Domain Low Allowlisted domain.
+Example: itype="benign_domain"
+benign_email Benign Email Email Low Allowlisted email address.
+Example: itype="benign_email"
+benign_hash Benign Hash String Low Allowlisted hash value.
+Example: itype="benign_hash"
+benign_internal_
+email
+Benign Internal
+Email
+Email Medium Internal email address.
+Example: itype="benign_
+internal_email"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 224 of 262
+Indicator Type Name Type Severity Description
+benign_ip Benign IP IP Low Allowlisted IP address.
+Example: itype="benign_ip"
+benign_url Benign URL String Low Allowlisted URL.
+Example: itype="benign_url"
+bitcoin_wallet Bitcoin Wallet
+Address
+String High Bitcoin wallet used in
+transactions.
+Example: itype="bitcoin_wallet'
+bot_domain Infected Bot
+Domain Name
+Domain Low Domain name of an infected
+machine acting as an
+autonomous bot.
+Example: itype="bot_domain"
+bot_ip Infected Bot IP IP Low IP address of an infected
+machine acting as an
+autonomous bot.
+Example: itype="bot_ip"
+bot_ipv6 Infected Bot IPv6 IP Low IPv6 address of an infected
+machine acting as an
+autonomous bot.
+Example: itype="bot_ipv6"
+bot_md5 Infected Bot
+Hash
+Hash Low Hash related to a file used by an
+infected machine acting as an
+autonomous bot.
+Example: itype="bot_md5"
+bot_url Infected Bot URL URL Low URL of an infected machine
+acting as an autonomous bot.
+Example: itype="bot_url"
+botnet_user_
+agent
+Botnert User
+Agent
+String Medium User agent string used by a
+botnet for malicious activity.
+Example: itype="botnet_user_
+agent"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 225 of 262
+Indicator Type Name Type Severity Description
+browser_
+extension_id
+Browser
+Extension ID
+String High Unique ID given to each browser
+extension, which is available in
+the Extension store of such
+browsers as Firefox, Chrome,
+and so on.
+Example: itype="browser_
+extension_id"
+brute_ip Brute Force IP IP Low IP address associated with
+password brute force activity.
+Example: itype="brute_ip"
+brute_ipv6 Brute Force IPv6 IP Low IPv6 address associated with
+password brute force activity.
+Example: itype="brute_ipv6"
+c2_domain Malware C&C
+Domain Name
+Domain High Domain name used by malware
+for command and control
+communication.
+Example: itype="c2_domain"
+c2_dns_name Malware C&C
+DNS Name
+Domain High DNS name used by malware for
+command and control
+communication.
+Example: itype="c2_dns_name"
+c2_ip Malware C&C IP
+Address
+IP High IP address used by malware for
+command and control
+communication.
+Example: itype="c2_ip"
+c2_ipv6 Malware C&C
+IPv6 Address
+IP High IPv6 address used by malware
+for command and control
+communication.
+Example: itype="c2_ipv6"
+c2_url Malware C&C
+URL
+URL High URL used by malware for
+command and control
+communication.
+Example: itype="c2_url"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 226 of 262
+Indicator Type Name Type Severity Description
+cloud_instance_
+id
+Cloud Instance
+ID
+String High Cloud VM or container instance
+identifier.
+Example: itype="cloud_
+instance_id"
+cobalt_strike_id Cobalt Strike ID String High Cobalt Strike or malware
+identifier.
+Example: itype="cobalt_strike_
+id"
+corp_vpn_ip Corp VPN IP IP Medium Internal VPN exit node IP for
+remote employees.
+Example: itype="corp_vpn_ip"
+comm_proxy_
+domain
+Commercial
+Webproxy
+Domain
+Domain Low Domain of the system on which
+commercial proxy software is
+hosted.
+Example: itype="comm_proxy_
+domain"
+comm_proxy_ip Commercial
+Webproxy IP
+IP Low IP address of the system on
+which commercial proxy software
+is hosted.
+Example: itype="comm_proxy_
+ip"
+comm_proxy_
+ipv6
+Commercial
+Webproxy IPv6
+IP Low IPv6 address associated with a
+commercial web proxy.
+Example: itype="comm_proxy_
+ipv6"
+compromised_
+email
+Compromised
+Account Email
+Email Low Email address that has been
+compromised and/or taken over
+by a threat actor.
+Example: itype="compromised_
+email"
+compromised_
+company
+Compromised
+Company
+String High Name of a compromised
+company.
+Example: itype="compromised_
+company"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 227 of 262
+Indicator Type Name Type Severity Description
+compromised_
+domain
+Compromised
+Domain
+Domain Low Domain name of website or
+server that has been
+compromised.
+Example: itype="compromised_
+domain"
+compromised_
+email_subject
+Compromised
+Email Subject
+String Low Email subject from a known
+compromised email address.
+Example: itype="compromised_
+email_subject"
+compromised_ip Compromised IP IP Low IP address of website or server
+that has been compromised.
+Example: itype="compromised_
+ip"
+compromised_
+ipv6
+Compromised
+IPv6
+IP Low IPv6 address of website or server
+that has been compromised.
+Example: itype="compromised_
+ipv6"
+compromised_
+password
+Compromised
+Password
+String Low Plaintext or hashed password
+value associated with a
+compromised credential record.
+Example: itype="compromised_
+password"
+compromised_
+port
+Compromised
+Port
+String Low Network port associated with a
+compromised device or session.
+Example: itype="compromised_
+port"
+compromised_
+serv_account
+Compromised
+Service Account
+String Low Account information associated
+with a service account that has
+been compromised and/or taken
+over by a threat actor.
+Example: itype="compromised_
+serv_account"
+compromised_
+url
+Compromised
+URL
+URL Medium URL of the website or server that
+has been compromised.
+Example: itype="compromised_
+url"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 228 of 262
+Indicator Type Name Type Severity Description
+compromised_
+username
+Compromised
+Username
+String Medium Username that has been
+compromised and/or taken over
+by a threat actor. Must have a
+length of 128 characters or less.
+Example: itype="compromised_
+username"
+crypto_hash Cryptocurrency
+Mining Software
+Hash High File hash for cryptocurrency
+mining software.
+Example: itype="crypto_hash"
+crypto_ip Cryptocurrency
+IP
+IP High IP address associated with a
+cryptocurrency mining software.
+Example: itype="crypto_ip"
+crypto_ipv6 Cryptocurrency
+IPv6
+IPv6 Medium IPv6 address associated with a
+cryptocurrency mining software.
+Example: itype="crypto_ipv6"
+crypto_pool Cryptocurrency
+Pool Domain
+Domain High Domain for cryptocurrency pool.
+Example: itype="crypto_pool"
+crypto_url Cryptocurrency
+URL
+URL High URL where cryptocurrency
+mining software is hosted.
+Example: itype="crypto_url"
+crypto_wallet Cryptocurrency
+Wallet Address
+String Very High Public or private cryptocurrency
+wallet key.
+Example: itype="crypto_wallet"
+customer_
+account_id
+Customer
+Account ID
+String High Identifier for an internal customer
+account.
+Example: itype="customer_
+account_id"
+ddos_ip DDOS IP IP Low IP address associated with
+Distributed Denial of Service
+(DDoS) attacks.
+Example: itype="ddos_ip"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 229 of 262
+Indicator Type Name Type Severity Description
+ddos_ipv6 DDOS IPv6 IP Low IPv6 address associated with
+Distributed Denial of Service
+(DDoS) attacks.
+Example: itype="ddos_ipv6"
+device_serial_
+number
+Device Serial
+Number
+String Medium Unique serial number of an
+endpoint, laptop, or mobile
+device.
+Example: itype="device_serial_
+number"
+disposable_
+email_domain
+Disposable Email
+Domain
+Domain Low Domain associated with
+disposable email activity.
+Example: itype="disposable_
+email_domain"
+downloader_
+domain
+Downloader
+Domain
+Domain High Domain associated with a
+downloader, which is a type of
+malware that downloads and
+runs other malware.
+Example: itype="downloader_
+domain"
+downloader_
+hash
+Downloader File
+Hash
+Hash High Hash of a malicious file
+associated with a downloader,
+which is a type of malware that
+downloads and runs other
+malware.
+Example: itype="downloader_
+hash"
+downloader_ip Downloader IP IP High IP address associated with a
+downloader, which is a type of
+malware that downloads and
+runs other malware.
+Example: itype="downloader_ip"
+downloader_
+ipv6
+Downloader IPv6 IP High IPv6 address associated with a
+downloader, which is a type of
+malware that downloads and
+runs other malware.
+Example: itype="downloader_
+ipv6"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 230 of 262
+Indicator Type Name Type Severity Description
+downloader_url Downloader URL URL High URL associated with a
+downloader, which is a type of
+malware that downloads and
+runs other malware.
+Example: itype="downloader_url"
+dyn_dns Dynamic DNS Domain Low Domain name used for hosting
+Dynamic DNS services.
+Example: itype="dyn_dns"
+email_
+attachment_
+subject
+Email
+Attachment
+Subject
+String Low Email subject from a known
+compromised email attachment.
+Example: itype="email_
+attachment_subject"
+employee_id Employee ID String Medium Internal identifier assigned to an
+employee.
+Example: itype="employee_id"
+encrypted_file_
+ext
+Encrypted File
+EXT
+String High Encrypted file extension used by
+malware.
+Example: itype="encrypted_file_
+ext"
+exfil_domain Data Exfiltration
+Domain
+Domain High Domain name associated with
+the infrastructure used for data
+exfiltration.
+Example: itype="exfil_domain"
+exfil_ip Data Exfiltration
+IP
+IP High IP address used for data
+exfiltration.
+Example: itype="exfil_ip"
+exfil_ipv6 Data Exfiltration
+IP
+IP High IPv6 address used for data
+exfiltration.
+Example: itype="exfil_ipv6"
+exfil_url Data Exfiltration
+URL
+URL High URL used for data exfiltration.
+Example: itype="exfil_url"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 231 of 262
+Indicator Type Name Type Severity Description
+exploit_domain Exploit Kit
+Domain
+Domain Very High Domain name associated with
+the web server hosting an exploit
+kit or launching web-based
+exploits.
+Example: itype="exploit_domain"
+exploit_ip Exploit Kit IP IP High IP address associated with the
+web server hosting an exploit kit
+or launching web-based exploits.
+Example: itype="exploit_ip"
+exploit_ipv6 Exploit Kit IPv6 IP High IPv6 address associated with the
+web server hosting an exploit kit
+or launching web-based exploits.
+Example: itype="exploit_ipv6"
+exploit_cve_id Exploit CVE ID String High CVE identifier for a vulnerability
+being exploited.
+Example: itype="exploit_cve_id"
+exploit_md5 Exploit Hash Hash Low Hash related to a file used to
+exploit a known vulnerability.
+Example: itype="exploit_md5"
+exploit_url Exploit Kit URL URL Very High URL used for launching webbased exploits.
+Example: itype="exploit_url"
+fraud_domain Fraud Domain Domain High Domain associated with a
+fraudulent activity.
+Example: itype="fraud_domain"
+fraud_email Fraud Email Email Low Email address associated with a
+fraudulent activity.
+Example: itype="fraud_email"
+fraud_email_
+subject
+Fraud Email
+Subject
+String Medium Subject from an email associated
+with fraud activity.
+Example: itype="fraud_email_
+subject"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 232 of 262
+Indicator Type Name Type Severity Description
+fraud_file_name Fraud File Name String Medium File name used in a fraud
+scheme.
+Example: itype="fraud_file_
+name"
+fraud_ip Fraud IP Address IP High IP address associated with a
+fraudulent activity.
+Example: itype="fraud_ip"
+fraud_ipv6 Fraud IPv6 IP High An IPv6 address associated with
+a fraudulent activity.
+Example: itype="fraud_ipv6"
+fraud_md5 Fraud Hash Hash Very High Hash associated with a
+fraudulent activity.
+Example: itype="fraud_md5"
+fraud_url Fraud URL URL Medium URL associated with a fraudulent
+activity.
+Example: itype="fraud_url"
+free_email_
+domain
+Free Email
+Domain
+Domain Low Domain associated with free
+email service activity.
+Example: itype="free_email_
+domain"
+freq_abused_
+dns_provider
+Frequently
+Abused DNS
+Provider
+String Medium Name of a frequently abused
+DNS provider.
+Example: itype="freq_abused_
+dns_provider".
+gaming_device_
+id
+Device ID String High ID of the gaming device
+associated with a malicious
+activity.
+Example: itype="gaming_
+device_id"
+gaming_device_
+name
+Device Name String High Name of the gaming device
+associated with a malicious
+activity.
+Example: itype="gaming_
+device_name"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 233 of 262
+Indicator Type Name Type Severity Description
+gaming_game_
+id
+Game ID String High ID of the game associated with a
+malicious activity.
+Example: itype="gaming_game_
+id"
+gaming_game_
+name
+Game Name String Low Name of the game associated
+with a malicious activity.
+Example: itype="gaming_game_
+name"
+gaming_player_
+country
+Player Country String Low Country of the player associated
+with a malicious activity.
+Example: itype="gaming_player_
+country"
+gaming_player_
+email
+Player Email Email High Player's email address
+associated with a malicious
+activity.
+Example: itype="gaming_player_
+email"
+gaming_player_
+id
+Player ID String High Player's ID associated with a
+malicious activity.
+Example: itype="gaming_player_
+id"
+gaming_player_
+nickname
+Player Nickname String Medium Player's nickname associated
+with a malicious activity.
+Example: itype="gaming_player_
+nickname"
+gaming_player_
+phone
+Player Phone Phone
+Number
+Medium Player's phone number
+associated with a malicious
+activity.
+Example: itype="gaming_player_
+phone"
+geolocation_url IP Geolocation
+URL
+URL Low URL that can be used to provide
+IP Geo location services.
+Example: itype="geolocation_url"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 234 of 262
+Indicator Type Name Type Severity Description
+hack_tool Hacking Tool String High Name of general hacking
+software tools used by threat
+actors.
+Example: itype="hack_tool"
+hack_tool_md5 Hack Tool File
+Hash
+Hash Very High MD5 or SHA hash of general
+hacking software tools used by
+threat actors.
+Example: itype="hack_tool_md5"
+iam_user_id IAM User ID String High User identity in an internal IAM
+system.
+Example: itype="iam_user_id"
+i2p_ip I2P IP Address IP Low IP address observed to be
+connecting to the I2P (Invisible
+Internet Project) network.
+Example: itype="i2p_ip"
+i2p_ipv6 I2P IPv6 Address IP Low IPv6 address observed to be
+connecting to the I2P (Invisible
+Internet Project) network.
+Example: itype="i2p_ipv6"
+image_hash Image Hash String Low Cryptographic hash of the image
+used for comparing two different
+images. It differs from typical
+MD5, SHA1, SHA2 hashes.
+Example: itype="image_hash"
+infostealer_
+domain
+Information
+Stealer Domain
+Domain Very High Domain associated with an
+information stealer.
+Example: itype="infostealer_
+domain"
+infostealer_hash Information
+Stealer File Hash
+Hash Very High Hash of a malicious file
+associated with an information
+stealer.
+Example: itype="infostealer_
+hash"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 235 of 262
+Indicator Type Name Type Severity Description
+infostealer_ip Information
+Stealer IP
+IP Very High IP address associated with an
+information stealer.
+Example: itype="infostealer_ip"
+infostealer_ipv6 Information
+Stealer IPv6
+IP Very High IPv6 address associated with an
+information stealer.
+Example: itype="infostealer_
+ipv6"
+infostealer_url Information
+Stealer URL
+URL Very High URL associated with an
+information stealer.
+Example: itype="infostealer_url"
+internal_dns_
+name
+Internal DNS
+Name
+String Medium Internal hostname or DNS
+record.
+Example: itype="internal_dns_
+name"
+internal_host_id Internal Host ID String High Identifier for workstation, server,
+or Cloud VM.
+Example: itype="internal_host_
+id"
+internal_ticket_
+id
+Internal Ticket ID String Low Internal support or security ticket
+ID.
+Example: itype="internal_ticket_
+id"
+iot_domain Internet of Things
+Malicious
+Domain
+Domain Medium Domain associated with malware
+targeting Internet of Things
+devices.
+Example: itype="iot_domain"
+iot_hash Internet of Things
+Malicious File
+Hash
+Hash High Hash of a malicious sample
+targeting Internet of Things
+devices.
+Example: itype="iot_hash"
+iot_ip Internet of Things
+Malicious IP
+IP Medium IP address associated with
+malware targeting Internet of
+Things devices.
+Example: itype="iot_ip"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 236 of 262
+Indicator Type Name Type Severity Description
+iot_ipv6 Internet of Things
+Malicious IPv6
+IP Medium IPv6 associated with malware
+targeting Internet of Things
+devices.
+Example: itype="iot_ipv6"
+iot_url Internet of Things
+Malicious URL
+URL Medium URL associated with malware
+targeting Internet of Things
+devices and services.
+Example: itype="iot_url"
+ipcheck_url IP Check URL URL Low URL that can be used to provide
+IP checking services, such as
+echoing the Internet facing IP
+address of the client.
+Example: itype="ipcheck_url"
+ja3_md5 JA3/JA3S TLS
+Fingerprint
+Hash Medium TLS Client/Server fingerprint.
+Example: itype="ja3_md5"
+mal_domain Malware Domain Domain Very High Domain contacted by malware
+sample; could be for command
+and control commands, or to
+check if the client is online.
+Example: itype="mal_domain"
+mal_email Malware Email Email Low Email address used to send
+malware through malicious links
+or attachments.
+Example: itype="mal_email"
+mal_email_
+subject
+Malware Email
+Subject
+String Medium Subject from an email associated
+with malware activity.
+Example: itype="mal_email_
+subject"
+mal_file_name Malware File
+Name
+String Very High File name of malware sample.
+Example: itype="mal_file_name"
+mal_file_path Malware File
+Path
+String Very High File path of malware sample.
+Example: itype="mal_file_path"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 237 of 262
+Indicator Type Name Type Severity Description
+mal_http_
+header
+Malicious HTTP
+Header
+String High HTTP header related to
+malicious requests.
+Example: itype="mal_http_
+header"
+mal_ip Malware IP IP Very High IP address contacted by malware
+sample; could be for command
+and control commands, or to
+check if the client is online.
+Example: itype="mal_ip"
+mal_ipv6 Malware IPv6 IP Very High IPv6 address contacted by
+malware sample; could be for
+command and control
+commands, or to check if the
+client is online.
+Example: itype="mal_ipv6"
+mal_md5 Malware File
+Hash
+Hash Very High MD5 or SHA hash of malware
+sample.
+Example: itype="mal_md5"
+mal_mutex Malware Mutex String Very High Mutex of malware sample.
+Example: itype="mal_mutex"
+mal_port Malware Port String Very High Malware-associated network port
+or IP-port composite value.
+Example: itype="mal_port"
+mal_registry_
+key
+Malware Registry
+Key
+String High Registry key of malware sample.
+Example: itype="mal_registry_
+key"
+mal_relay_
+server_ip
+Malicious Relay
+Server IP
+IP Medium IP address of a malicious relay
+server.
+Example: itype="mal_relay_
+server_ip"
+mal_relay_
+relay_server_
+ipv6
+Malicious Relay
+Server IPv6
+IP Medium IPv6 address of a malicious relay
+server.
+Example: itype="mal_relay_
+server_ipv6"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 238 of 262
+Indicator Type Name Type Severity Description
+mal_service_
+description
+Malware Service
+Description
+String Very High Service description associated
+with the malware sample.
+Example: itype="mal_service_
+description"
+mal_service_
+displayname
+Malware Service
+Display Name
+String Very High Service display name associated
+with the malware sample.
+Example: itype="mal_service_
+displayname"
+mal_service_
+name
+Malware Service
+Name
+String Very High Service name associated with
+the malware sample.
+Example: itype="mal_service_
+name"
+mal_smtp_
+header
+Malicious SMTP
+Header
+String High SMTP header related to a
+malicious email activity.
+Example: itype="mal_smtp_
+header"
+mal_ssdeep Malware
+SSDeep Hash
+String Very High SSDeep Hash associated with
+the malware sample.
+Example: itype="mal_ssdeep"
+mal_sslcert_
+sha1
+SSL Certificate
+Hash
+Hash High MD5 or SHA hash of SSL
+certificate associated with
+malware or botnet activities.
+Example: itype="mal_sslcert_
+sha1"
+mal_ua Malware User
+Agent
+String Low User agent string used by
+malware sample when
+communicating via HTTP.
+Example: itype="mal_ua"
+mal_url Malware URL URL Very High URL contacted by malware
+sample when run on an infected
+host.
+Example: itype="mal_url"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 239 of 262
+Indicator Type Name Type Severity Description
+mal_wildcard_
+domain
+Malware
+Wildcard Domain
+String High A wildcard domain associated
+with malware activities.
+Example: itype="mal_wildcard_
+domain"
+mal_wildcard_
+url
+Malware
+Wildcard URL
+String High A wildcard URL associated with
+malware activities.
+itype="mal_wildcard_url"
+mobile_malware Mobile Malware String High Indicator related to mobile
+malware.
+Example: itype="mobile_
+malware"
+new_domain New Domain Domain Low Recently registered domain with
+insufficient history to fully
+evaluate.
+Example: itype="new_domain"
+p2pcnc Peer-to-Peer
+C&C IP Address
+IP Medium IP addressed associated with a
+peer-to-peer command and
+control infrastructure.
+Example: itype="p2pcnc"
+p2pcnc_ipv6 Peer-to-Peer
+C&C IPv6
+Address
+IP Medium IPv6 addressed associated with
+a peer-to-peer command and
+control infrastructure.
+Example: itype="p2pcnc_ipv6"
+parked_domain Parked Domain Domain Low Domain name of a website which
+is currently parked.
+Example: itype="parked_
+domain"
+parked_ip Domain Parking
+IP
+IP Low IP addressed used for parking
+newly registered or inactive
+domain names.
+Example: itype="parked_ip"
+parked_ipv6 Domain Parking
+IPv6
+IP Low IPv6 addressed used for parking
+newly registered or inactive
+domain names.
+Example: itype="parked_ipv6"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 240 of 262
+Indicator Type Name Type Severity Description
+parked_url Parked URL URL Low URL of a website that is currently
+parked.
+Example: itype="parked_url"
+pastesite_url Paste Site URL URL Low URL that can be used for sharing
+pastes or text content
+anonymously.
+Example: itype="pastesite_url"
+phish_domain Phishing Domain Domain Very High Domain used to perform phishing
+or spear phishing attacks or
+contained in a phishing email.
+Example: itype="phish_domain"
+phish_email Phishing Email
+Address
+Email Very High Email address associated with
+sending phishing or spear
+phishing emails to victims.
+Example: itype="phish_email"
+phish_email_
+subject
+Phishing Email
+Subject
+String High Subject from an email associated
+with phishing activity.
+Example: itype="phish_email_
+subject"
+phish_file_name Phishing File
+Name
+String Medium File name used in a phishing
+attack.
+Example: itype="phish_file_
+name"
+phishing_target Phishing Target String High Identifier for phishing victims.
+Example: itype="phishing_target"
+phish_ip Phishing
+IP Address
+IP Very High IP address that has been used to
+perform phishing or spear
+phishing or is contained in a
+phishing email.
+Example: itype="phish_ip"
+phish_ipv6 Phishing
+IPv6 Address
+IP Very High IPv6 address that has been used
+to perform phishing or spear
+phishing or is contained in a
+phishing email.
+Example: itype="phish_ipv6"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 241 of 262
+Indicator Type Name Type Severity Description
+phish_md5 Phishing File
+Hash
+Hash Very High Hash related to a file used to
+perform phishing or spear
+phishing attacks or contained in a
+phishing email.
+Example: itype="phish_md5"
+phish_url Phishing URL URL Very High URL used to perform phishing or
+spear phishing attacks or
+contained in a phishing email.
+Example: itype="phish_url"
+phish_victim_
+email
+Phishing Victim
+Email
+Email Low Email of a user who was a victim
+of a phishing attack.
+Example: itype="phish_victim_
+email"
+phone_number Phone Number String Medium Phone number used in fraudulent
+activities.
+Example: itype="phone_number"
+platform_uid Platform UID String Medium Unique user ID from a specific
+platform.
+Example: itype="platform_uid"
+pos_domain Point of Sale
+Malicious
+Domain
+Domain Medium Domain associated with malware
+targeting Point of Sales systems.
+Example: itype="pos_domain"
+pos_hash Point of Sale
+Malicious File
+Hash
+Hash High Malicious file hash targeting
+Point of Sales systems.
+Example: itype="pos_hash"
+pos_ip Point of Sale
+Malicious IP
+IP Medium IP address associated with
+malware targeting Point of Sale
+systems.
+Example: itype="pos_ip"
+pos_ipv6 Point of Sale
+Malicious IPv6
+IP Medium IPv6 address associated with
+malware targeting Point of Sales
+systems.
+Example: itype="pos_ipv6"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 242 of 262
+Indicator Type Name Type Severity Description
+pos_url Point of Sale
+Malicious URL
+URL Medium URL associated with malware
+targeting Point of Sales systems.
+Example: itype="pos_url"
+proxy_ip Open Proxy IP IP Low IP address hosting open or
+anonymous proxy software.
+Allows user to hide their IP
+address from target.
+Example: itype="proxy_ip"
+proxy_ipv6 Open Proxy IPv6 IP Low IPv6 address hosting open or
+anonymous proxy software.
+Allows user to hide their IP
+address from target.
+Example: itype="proxy_ipv6"
+ransomware_
+domain
+Ransomware
+Domain
+Domain Very High Domain associated with
+ransomware.
+Example: itype="ransomware_
+domain"
+ransomware_
+hash
+Ransomware
+File Hash
+Hash Very High File hash of a malicious
+ransomware sample.
+Example: itype="ransomware_
+hash"
+ransomware_ip Ransomware IP IP Very High IP address associated with
+ransomware.
+Example: itype="ransomware_ip"
+ransomware_
+ipv6
+Ransomware
+IPv6
+IP Very High IPv6 address associated with
+ransomware.
+Example: itype="ransomware_
+ipv6"
+ransomware_
+group
+Ransomware
+Group
+String Low Group associated with
+ransomware.
+Example: itype="ransomware_
+group"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 243 of 262
+Indicator Type Name Type Severity Description
+ransomware_url Ransomware
+URL
+URL Very High URL associated with
+ransomware.
+Example: itype="ransomware_
+url"
+ransomware_
+victim_domain
+Ransomware
+Victim Domain
+Domain Low Domain of a ransomware victim.
+Example: itype="ransomware_
+victim_domain"
+ransomware_
+victim_name
+Ransomware
+Victim Name
+String Low Name of a ransomware victim.
+Example: itype="ransomware_
+victim_name"
+ransomware_
+victim_url
+Ransomware
+Victim URL
+URL Low URL of a ransomware victim.
+Example: itype="ransomware_
+victim_url"
+rootkit_hash Rootkit File Hash Hash Very High File hash of rootkit malware that
+provides root-level access to an
+attacker.
+Example: itype="rootkit_hash"
+scan_ip Scanning IP IP Medium IP address observed to perform
+port scanning and vulnerability
+scanning activities.
+Example: itype="scan_ip"
+scan_ipv6 Scanning IPv6 IP Medium IPv6 address observed to
+perform port scanning and
+vulnerability scanning activities.
+Example: itype="scan_ipv6"
+session_token Session Token String High Temporary authentication token
+for session management.
+Example: itype="session_token"
+sinkhole_
+domain
+Sinkhole Domain Domain Low Domain name that researchers
+or security companies typically
+sinkhole.
+Example: itype="sinkhole_
+domain"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 244 of 262
+Indicator Type Name Type Severity Description
+sinkhole_ip Sinkhole IP IP Low IP address that is known to be
+used to sinkhole malicious
+domain names.
+Example: itype="sinkhole_ip"
+sinkhole_ipv6 Sinkhole IPv6 IP Low IPv6 address that is known to be
+used to sinkhole malicious
+domain names.
+Example: itype="sinkhole_ipv6"
+social_forum_
+name
+Forum Name String Low Name of the social forum
+associated with a malicious
+activity.
+Example: itype="social_forum_
+name"
+social_media_
+name
+Social Media
+Name
+String Medium Name of the social media
+associated with a malicious
+activity.
+Example: itype="social_media_
+name"
+social_media_
+url
+Social Media
+URL
+URL Medium URL related to social media
+activity. This indicator type is
+provided by select feeds and
+cannot be imported through the
+ThreatStream user interface.
+Example: itype="social_media_
+url"
+social_
+messaging_
+services
+Messaging
+Services
+String Low Messaging service used for
+malicious activity.
+Example: itype="social_
+messaging services"
+spam_domain Spam Domain Domain Low Malicious domain name
+contained in the SPAM email
+messages.
+Example: itype="spam_domain"
+spam_email Spammer Email
+Address
+Email Low Email address that has been
+observed sending SPAM emails.
+Example: itype="spam_email"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 245 of 262
+Indicator Type Name Type Severity Description
+spam_email_
+subject
+Spam Email
+Subject
+String Low Subject from an email associated
+with spam activity.
+Example: itype="spam_email_
+subject"
+spam_ip Spammer IP IP Low IP address that is known to send
+SPAM emails.
+Example: itype="spam_ip"
+spam_ipv6 Spammer IPv6 IP Low IPv6 address that is known to
+send SPAM emails.
+Example: itype="spam_ipv6"
+spam_mta Spam Mail
+Transfer Agent
+String Low Mail transfer agent known to be
+associated with SPAM emails.
+Example: itype="spam_mta"
+spam_url Spam URL URL Low Malicious URL contained in the
+SPAM email messages.
+Example: itype="spam_url"
+speedtest_url Speed Test URL URL Low URL that can be used to run
+internet speed tests or bandwidth
+measurements of the client's
+network connection.
+Example: itype="speedtest_url"
+ssh_ip SSH Brute Force
+IP
+IP Low IP addresses associated with
+SSH brute force attempts.
+Example: itype="ssh_ip"
+ssh_ipv6 SSH Brute Force
+IPv6
+IP Low IPv6 addresses associated with
+SSH brute force attempts.
+Example: itype="ssh_ipv6"
+ssl_cert_serial_
+number
+SSL Certificate
+Serial Number
+String Low Serial number unique to the TLS
+certificate issuer that identifies
+the entity being signed.
+Example: itype="ssl_cert_serial_
+number"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 246 of 262
+Indicator Type Name Type Severity Description
+sso_session_id SSO Session ID String High Identifier for an active SSO
+session.
+Example: itype="sso_session_id"
+suppress Suppress n/a n/a Not a true indicator type. Used by
+Arcsight for suppressing false
+positives.
+Default severity: n/a
+Example: itype="suppress"
+suppress_ipv6 Suppress Alerts
+IPv6
+IP Low IPv6 address related to alert
+suppression.
+Example: itype="suppress_ipv6"
+suspected_c2_
+dns_name
+Suspected C&C
+DNS Name
+Domain Medium Suspected DNS name used by
+malware for command and
+control communication.
+Example: itype="suspected_c2_
+dns_name"
+suspicious_
+cmd_line
+Suspicious CMD
+Line
+String Medium Command-line arguments used
+in execution.
+Example: itype="suspicious_
+cmd_line"
+suspicious_
+domain
+Suspicious
+Domain
+Domain Medium Domain name that appears to be
+registered for suspect reasons,
+but may not be associated with
+known malicious activity yet.
+Example: itype="suspicious_
+domain"
+suspicious_
+email
+Suspicious Email Email Low Email address that appears to be
+used for suspect reasons, but
+may not be associated with
+known malicious activity yet.
+Example: itype="suspicious_
+email"
+suspicious_
+email_subject
+Suspicious Email
+Subject
+String Low Email subject from a suspicious
+email address.
+Example: itype="suspiciousemail_subject"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 247 of 262
+Indicator Type Name Type Severity Description
+suspicious_ip Suspicious IP IP Medium IP address that appears to be
+registered for suspect reasons,
+but may not be associated with
+known malicious activity yet.
+Example: itype="suspicious_ip"
+suspicious_ipv6 Suspicious Ipv6 IP Medium IPv6 address related to a
+suspcious activity.
+Example: itype="suspicious_
+ipv6"
+suspicious_md5 Suspicious Hash Hash Low Hash related to a suspicious
+activity.
+Example: itype="suspicious_
+md5"
+suspicious_reg_
+email
+Suspicious
+Registrant Email
+Email Low Registrant email address that
+appears to be used for suspect
+reasons, but may not be
+associated with known malicious
+activity yet.
+Example: itype="suspicious_
+reg_email"
+sus_wildcard_
+domain
+Suspicious
+Wildcard Domain
+String Medium A wildcard domain that appears
+to be registered for suspect
+reasons, but may not be
+associated with known malicious
+activity yet.
+Example: itype="sus_wildcard_
+domain"
+sus_wildcard_url Suspicious
+Wildcard URL
+String Medium A wildcard URL that appears to
+be registered for suspect
+reasons, but may not be
+associated with known malicious
+activity yet.
+Example: itype="sus_wildcard_
+url"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 248 of 262
+Indicator Type Name Type Severity Description
+suspicious_url Suspicious URL URL Medium URL that appears to be
+registered for suspect reasons,
+but may not be associated with
+known malicious activity yet.
+Example: itype="suspicious_url"
+telegram_id Telegram ID String Medium Telegram user or group ID.
+Example: itype="telegram_id"
+threat_actor_
+hostname
+Threat Actor
+Hostname
+String High Hostname associated with a
+threat actor.
+Example: itype="threat_actor_
+hostname"
+tor_ip TOR Node IP IP Low IP address operating as part of
+The Onion Router (TOR)
+Network, also know as a TOR
+exit node.
+Example: itype="tor_ip"
+tor_ipv6 TOR Node IPv6 IP Low IPv6 address operating as part of
+The Onion Router (TOR)
+Network, also know as a TOR
+exit node.
+Example: itype="tor_ipv6"
+torrent_tracker_
+url
+Torrent Tracker
+URL
+URL Low URL used for tracking bittorrent
+file transfer activity.
+Example: itype="torrent_tracker_
+url"
+tox_id Tox ID String Medium TOX messaging platform ID.
+Example: itype="tox_id"
+trojan_domain Trojan Domain Domain High Domain associated with Trojan
+malware that disguises as a
+legitimate code or software.
+Example: itype="trojan_domain"
+trojan_hash Trojan File Hash Hash High File hash associated with Trojan
+malware that disguises as a
+legitimate code or software.
+Example: itype="trojan_hash"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 249 of 262
+Indicator Type Name Type Severity Description
+trojan_ip Trojan
+IP Address
+IP High IP address associated with
+Trojan malware that disguises as
+a legitimate code or software.
+Example: itype="trojan_ip"
+trojan_ipv6 Trojan IPv6
+Address
+IP High IPv6 address associated with a
+Trojan malware that disguises as
+a legitimate code of software.
+Example: itype="trojan_ipv6"
+trojan_url Trojan URL URL High URL associated with a Trojan
+malware that disguises as a
+legitimate code or software.
+Example: itype="trojan_url"
+twitter_handle Twitter Handle String Medium Twitter handle or social media
+identifier.
+Example: itype="twitter_handle"
+visitor_token Visitor Token String High Token used for session tracking.
+Example: itype="visitor_token"
+vpn_domain Anonymous
+VPN Domain
+Domain Low Domain name associated with
+commercial or free Virtual Private
+Networks (VPN).
+Example: itype="vpn_domain"
+vps_ip Cloud Server IP IP Low IP address that is used for
+hosting Virtual Private Servers
+(VPS) or other server rentals.
+Example: itype="vps_ip"
+vps_ipv6 Cloud Server
+IPv6
+IP Low IPv6 address that is used for
+hosting Virtual Private Servers
+(VPS) or other server rentals.
+Example: itype="vps_ipv6"
+vuln_risk_score Vulnerability Risk
+Score
+String Low Risk score for a vulnerability.
+Example: itype="vuln_risk_
+score"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 250 of 262
+Indicator Type Name Type Severity Description
+web3_attack_
+vector
+Web 3 Attack
+Vector
+String High Address of a known malicious
+smart contract.
+Example: itype="web3_attack_
+vector"
+web3_
+compromised_
+wallet
+Web3
+Compromised
+Wallet
+String High Wallet address involved in
+fraudulent or malicious
+transactions.
+Example: itype="web3_
+compromised_wallet"
+web3_dns_
+hijacking
+Web3 DNS
+Hijacking
+String Medium Detection of tampering attempts
+on decentralized DNS (for
+example, ENS).
+Example: itype="web3_dns_
+hijacking"
+web3_
+exploitable_
+code
+Web3
+Exploitable Code
+String High Code pattern within dApps or
+smart contracts vulnerable to
+attacks.
+Example: itype="web3_
+exploitable_code"
+web3_
+malicious_
+contract
+Web3 Malicious
+Contract
+String High Address of a known malicious
+smart contract.
+Example: itype="web3_
+malicious_contract"
+web3_
+malicious_token
+Web3 Malicious
+Token
+String High Identifier of a fraudulent or scamrelated token contract.
+Example: itype="web3_
+malicious_token"
+web3_phishing_
+domain
+Web3 Phishing
+Domain
+String High Domain or URL used for Web3
+phishing attacks.
+Example: itype="web3_
+phishing_domain"
+web3_
+suspicious_
+pattern
+Web3 Suspisious
+Pattern
+String High Transaction behavior indicative
+of exploits or attacks.
+Example: itype="web3_
+suspicious_pattern"
+Reference Guide
+Appendix B: Indicator Types in ThreatStream
+Anomali ThreatStream API Page 251 of 262
+Indicator Type Name Type Severity Description
+whois_bulk_
+reg_email
+Whois Bulk
+Registrant Email
+Email Low Registrant email address
+associated with privacy domain
+purchased from Whois.
+Example: itype="whois_bulk_
+reg_email"
+whois_privacy_
+domain
+Whois Privacy
+Email Domain
+Domain Low Privacy domain purchased from
+Whois.
+Example: itype="whois_privacy_
+domain"
+whois_privacy_
+email
+Whois Privacy
+Email
+Email Low Email address associated with a
+privacy domain purchased from
+Whois.
+Example: itype="whois_privacy_
+email"
+xampp_jabber_
+id
+Xampp Jabber ID String Medium XAMPP/Jabber messaging ID.
+Example: itype="xampp_jabber_
+id"
