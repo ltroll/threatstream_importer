@@ -1,0 +1,867 @@
+Import
+The approach you use to import data into ThreatStream depends largely on the data set you are
+importing. For most imports, you will want to import the data through the API, and then review it within
+the ThreatStream UI to approve the import. Doing so allows you to review the indicators being
+imported. However, if the data you are importing is in a structured format, such as JSON, and strictly
+follows the format described in this document, you can import it directly into ThreatStream, without
+requiring you to review it first within the ThreatStream UI.
+Note: Anomali recommends reviewing the indicator data being imported for all file formats
+except JSON, which can be imported directly if the data is in the format described in this
+document.
+To import data in any format and require approval on ThreatStream before the import is complete:
+See "Import (with approval)" below.
+To import data without requiring an approval before the import is complete: See "Import (without
+approval)" on page 35.
+Import (with approval)
+To import threat data (observables) into ThreatStream and require approval of the imported data
+through the ThreatStream UI. Unstructured data can be specified in any format, such as JSON, CSV,
+PDF, or plain text, and can be contained in a file or directly specified in the API call. You can also
+import data from plain text intelligence streams by specifying a URL. Once data has been imported,
+you must login to the ThreatStream UI and approve the import.
+This method can be used to import unstructured and structured data. See "Supported Data Formats"
+on page 29 for more information.
+When importing unstructured data, all intelligence is associated with the same attributes—threat
+type, classification, confidence. For example, if a file has two IP addresses, each IP will be assigned
+the same indicator type based on the threat type you specify. See "Request Attributes" on the next
+page for a list of global settings that can be specified for imported observables.
+However, when importing structured data, you can specify a different itype and tags for each
+observable in the structured file, which is different from the global settings. When a local setting is
+specified, it overrides the global setting.
+Request
+/api/v2/intelligence/import/
+Important: /api/v1/intelligence/ requests are now deprecated. Anomali recommends
+using /api/v2/intelligence/ for all requests.
+Anomali ThreatStream API Page 23 of 262
+HTTP Method: POST
+Attributes: See the table below
+Request Attributes
+These attributes specify global settings for imported observables. If an imported observable does not
+have an explicitly specified value for these settings, the global setting is applied. However, if an
+imported observable does have an explicitly specified value, it overrides the global value.
+Attribute Type Description
+actors string IDs of the actors with which you want to associate the imported
+intelligence.
+campaigns string IDs of the campaigns with which you want to associate the
+imported intelligence.
+classification string Classification of the observable—public or private.
+confidence numeric Confidence score that you (the source) want to assign to the
+imported observable(s) based on the level of confidence you
+have about the maliciousness of the observable.
+Confidence scores range from 0-100, in increasing order of
+confidence.
+If you want ThreatStream to use the confidence value that you
+specify and not re-assess the value using its machine-learning
+algorithms, see "source_confidence_weight" on page 26.
+Note: ThreatStream only scores domain, IP, and URL
+observables. For all other observable types, you must
+specify a confidence value—either globally or per
+observable.
+datatext string Text containing the observables you want to import.
+Reference Guide
+Import
+Anomali ThreatStream API Page 24 of 262
+Attribute Type Description
+default_state string Whether the import job must be approved from the
+ThreatStream user interface before observables become active.
+When default_state is set to active, observables become
+active upon submission, without requiring approval. In these
+cases, an import job is created on ThreatStream which is
+automatically approved.
+You must have the Approve Import privilege in order to import
+observables through the API with default_state set to
+active.
+If no value is specified for default_state, resulting import jobs
+are in Ready to Review status and must be approved from the
+ThreatStream user interface before observables become active.
+expiration_ts date Time stamp of when intelligence will expire on ThreatStream, in
+UTC format. For example, 2017-01-26T00:00:00.
+By default, the expiration_ts is set to 90 days from the current
+date.
+file string Path to the file from which the observables will be imported.
+incidents string IDs of the incidents with which you want to associate the
+imported intelligence.
+intelligence_
+source
+string Source from which the intelligence originated.
+is_anonymous boolean Whether you want to anonymize your organization information.
+Users outside of your organization with access to the
+observables will see "Analyst" in all fields that would otherwise
+display an organization or user name.
+True—if you want to anonymize organization information
+False—if you do not want to anonymize your organization
+information
+malware string IDs of the malware with which you want to associate the
+imported intelligence.
+reject_benign boolean Whether benign observables—those assigned a confidence
+score of 15 or less—are automatically excluded from the import
+job.
+True—if you want to reject benign observables
+False—if you do not want to reject benign observables
+By default, reject_benign is set to True.
+Reference Guide
+Import
+Anomali ThreatStream API Page 25 of 262
+Attribute Type Description
+remote_api (for
+ThreatStream
+OnPrem only)
+boolean Whether intelligence is remote (stored on Cloud).
+This attribute does not need to be set to ingest local intelligence.
+Only use this attribute when ingesting remote intelligence from
+ThreatStream Cloud. Set this attribute to true in this case.
+Do not set this attribute to false for ingesting local intelligence.
+Doing so will generate errors.
+severity string Gauges the potential impact of the indicator type the observable
+is thought to be associated with.
+Possible values: low, medium, high, very-high
+Note: A default severity value is assigned to each imported
+observable, based on its indicator type. (See Help for the
+Severity field in the ThreatStream UI for a list of default severity
+values for indicator types.) However, if you want to override the
+default value, you can use this field.
+source_
+confidence_
+weight
+numeric Specifies the ratio between the amount of the source confidence
+of each observable and the ThreatStream's confidence. For
+example, if this setting = 30%, when calculating the final
+confidence, 30% weight is given to the confidence specified by
+the source of the observable and 70% weight is given to the
+confidence deemed by ThreatStream (based on the machinelearning algorithms).
+Notes:
+l To use your source's confidence entirely, set source_
+confidence_weight to 100.
+l source_confidence_weight can only be specified as a
+request attribute. It cannot be specified in the structured CSV
+file.
+l In ThreatStream API, you can set the source confidence
+weight granularly, from 0 to 100 using the source_
+confidence_weight attribute.
+l This setting only applies to observables for which
+classification is set to private, including those shared with
+trusted circles.
+l This is the same setting as the Override System Confidence
+setting in ThreatStream UI (in Imports and Feeds). When this
+setting is unchecked, source_confidence_weight is set to
+0, it means do not use source-reported confidence value.
+When this setting is checked, source_confidence_weight
+Reference Guide
+Import
+Anomali ThreatStream API Page 26 of 262
+Attribute Type Description
+is set to 100, it means only use the source-reported
+confidence value—do not reassess the score using the
+machine-learning algorithms.
+Note: You cannot set this attribute granularly through
+the UI. You can only set this attribute to 0 or 100 through
+the UI.
+source_locations list of
+string
+Source locations assigned to the imported observables.
+Possible values include letter codes of regions, countries, and
+administrative areas (US States and Washington DC only) as
+defined by STIX 2.1. For example, eastern-africa, centralasia, europe, africa, NL, GB, US-FL, and US-MO.
+tags string Tags applied to the imported observables.
+Tags must be specified as follows:
+tags: [{"name": "my_tag","tlp": "red"},{"name":
+"my_tag2","tlp": "clear"},{"name": "my_tag3"}]
+Tag Attributes:
+l name—name of the tag that you want to add.
+l tlp—the visibility setting for the tag. Possible values: red,
+amber, amber+strict, green, clear.
+l red—private, or visible to your organization only.
+l white—public, or visible to all ThreatStream users with
+access to the data. Default: white.
+Note: Adding public tags may be restricted by your
+Organization Administrator.
+In the example above, my_tag is private and my_tag2 and
+my_tag3 are public.
+target_industry list of
+strings
+Target industries assigned to the imported observables.
+Possible values are defined by the STIX 2.1 Industry Sector
+vocabulary.
+For example, chemical, financial-services, and
+government-regional.
+target_locations list of
+strings
+Target locations assigned to the imported observables.
+Reference Guide
+Import
+Anomali ThreatStream API Page 27 of 262
+Attribute Type Description
+Possible values include letter codes of regions, countries, and
+administrative areas (US States and Washington DC only) as
+defined by STIX 2.1. For example, eastern-africa, centralasia, europe, africa, NL, GB, US-FL, and US-MO.
+threat_type string Type of threat associated with the imported observables.
+ThreatStream assigns observable types based on the threat
+type you specify. For a complete list of threat types, see "Threat
+Types in ThreatStream" on page 254.
+If you specify a threat type not associated with observable types
+that map to the observables you import, imported observables
+will be assigned malware indicator types by default. For
+example, if you import a file hash and specify the adware threat
+type—whose only indicator type association is "adware_
+domain"—ThreatStream will assign the malware_md5 indicator
+type by default.
+tipreports string IDs of the tipreports with which you want to associate the
+imported intelligence.
+tlp string Traffic Light Protocol designation for the intelligence—red,
+amber, amber+strict, green, clear.
+trustedcircles numeric ID of the trusted circle to which this threat data should be
+imported. If you want to import the threat data to multiple trusted
+circles, enter the list of comma-separated IDs.
+To find the ID of a trusted circle, locate the trusted circle on
+ThreatStream, click on its name. The URL displayed in the
+address bar shows the ID. For example,
+https://ui.threatstream.com/search?trusted_circle_ids=13.
+ttps string IDs of the ttps with which you want to associate the imported
+intelligence.
+Type-specific mappings
+Note: If you do not specify a threat_type in your request, you must specify indicator type
+mappings for each of the following attributes. See Indicator Types for a complete list of
+supported values. See "Fraud Indicator Types for ThreatStream OnPrem" on page 253 for a
+list of indicator types exclusive to ThreatStream OnPrem.
+domain_mapping string Indicator type to assign if a specific type is not associated with
+an observable.
+This is a global setting that applies to any imported domain-type
+observable when an explicit itype is not specified for it.
+Reference Guide
+Import
+Anomali ThreatStream API Page 28 of 262
+Attribute Type Description
+email_mapping string Indicator type to assign if a specific type is not associated with
+an observable.
+This is a global setting that applies to any imported email-type
+observable when an explicit itype is not specified for it.
+ip_mapping string Indicator type to assign if a specific type is not associated with
+an observable.
+This is a global setting that applies to any imported IP-type
+observable when an explicit itype is not specified for it.
+md5_mapping string Indicator type to assign if a specific type is not associated with
+an observable.
+This is a global setting that applies to any imported MD5-type
+observable when an explicit itype is not specified for it.
+url_mapping string Indicator type to assign if a specific type is not associated with
+an observable.
+This is a global setting that applies to any imported URL-type
+observable when an explicit itype is not specified for it.
+Supported Data Formats
+This API call can be used to import unstructured and structured data.
+Unstructured Data
+There are no specific requirements for unstructured data.
+Structured Data
+Follow these guidelines when importing structured data:
+l The structured data must be contained in a valid CSV file with the following header line: value,
+itype, tags. Optional columns include private_tags, is_anonymous, and tlp.
+value itype tags
+privat
+e_tags
+is_
+anonymo
+us tlp
+1.2.3.4 brute_ip exploitation,phis
+hing
+true green
+https://example.com apt_url phishing sensitiv
+e
+ambe
+r
+Reference Guide
+Import
+Anomali ThreatStream API Page 29 of 262
+value itype tags
+privat
+e_tags
+is_
+anonymo
+us tlp
+4d68462ca6071f9b6ad0fabea
+8bd1c9f
+mal_md5 false red
+%.skydome.com mal_
+wildcard_
+domain
+malware_
+domains
+https://bluebird.com/% suspiciou
+s_
+wildcard_
+url
+sus_urls
+Note: Observables with the percent symbol (%) represent wildcard domains and URLs. For
+more information on wildcard observables, refer to Wildcard Observables.
+l The value header label is mandatory. This column must contain data.
+l For domain, email, IP, MD5, and URL observables, itype, tags, and private_tags header
+labels can be omitted if no data will be specified for these columns. For all other observables, you
+must specify a value for itype. See "Import (with approval)" on page 23 of indicator types (itype).
+l tags is a comma-separated list of tags. Tags included in the tags column are assigned the
+Anomali Community visibility setting and visible to all users with access to the observable.
+l private_tags is a comma-separated list of tags. Tags included in the private_tags column are
+assigned the My Organization visibility setting and visible only to users in your organization.
+l is_anonymous sets whether the organization and user information for the observable is
+anonymized. Possible values include true and false. If no value is specified, observables will
+not be anonymized.
+l tlp sets a TLP color for the observable. Possible values include clear, green, amber,
+amber+strict, and red.
+l The data specified in itype and tags columns overrides the global settings specified in the
+"Request Attributes" on page 24 settings. For example, if the structured CSV contains the
+following: value=1.2.3.4, itype=phish_ip, and Request Attribute ip_mapping=mal_ip, then itype
+for the observable 1.2.3.4 will be set to phish_ip because the setting in the file (local value) will
+override the Request Attribute setting (global value).
+l If the itype and tags columns are empty, the data for these columns is derived from the
+"Request Attributes" on page 24 settings. For example, if value=1.2.3.4, itype is not specified in
+the file, tags is not specified in the file, and the Request Attribute ip_mapping=mal_ip, then itype
+for the observable will be set to mal_ip.
+Reference Guide
+Import
+Anomali ThreatStream API Page 30 of 262
+Examples
+1. To import observables from a file. The file can contain unstructured or structured data.
+curl example:
+curl -X POST 'https://api.threatstream.com/api/v2/intelligence/import/' -F
+"confidence=30" -F "classification=private" -F "threat_type=malware" -F
+"file=@<filename>" -H 'Authorization: apikey <username>:<api_key>'
+Python example:
+def import_with_approval_using_file(username, api_key):
+auth = 'apikey {}:{}'.format(username, api_key)
+headers = {'Authorization': auth}
+api_url = "https://api.threatstream.com/api/v2/intelligence/import/"
+tags = [{'name': 'private_tag', 'tlp': 'red'}]
+payload={
+'classification': 'private',
+'confidence': 70,
+'threat_type': 'malware',
+'tags': json.dumps(tags)
+}
+filename = '<name_of_your_file>' #this can be a .txt, .csv or .pdf file
+files = {'file': open(filename, 'rb')}
+response = requests.post(api_url, headers=headers, data=payload, files=files)
+print(response.text)
+2. To import observables directly, by specifying them in the API call:
+curl example:
+curl -X POST 'https://api.threatstream.com/api/v2/intelligence/import/' -F
+"confidence=70" -F "classification=private" -F "threat_type=apt" -F
+"datatext=<text_to_parse_and_import>" -H 'Authorization: apikey
+<username>:<api_key>'
+Python example:
+def import_with_approval_using_datatext(username, api_key):
+auth = 'apikey {}:{}'.format(username, api_key)
+headers = {'Authorization': auth}
+url = "https://api.threatstream.com/api/v2/intelligence/import/"
+tags = [{'name': 'public_tag'}, {'name': 'private_tag', 'tlp': 'red'}]
+payload={
+'classification': 'private',
+'confidence': 65,
+'threat_type': 'malware',
+Reference Guide
+Import
+Anomali ThreatStream API Page 31 of 262
+'tags': json.dumps(tags),
+'datatext': <text_to_parse_and_import>'
+}
+response = requests.post(url, headers=headers, data=payload)
+print(response.text)
+3. To import observables from a plain text intelligence stream by specifying a URL:
+curl example:
+curl -X POST 'https://api.threatstream.com/api/v2/intelligence/import/' -F
+"confidence=60" -F "classification=private" -F "threat_type=c2" -F
+"url=<url_for_plain_text_stream>" -H 'Authorization: apikey <username>:<api_
+key>'
+Python example:
+def import_with_approval_using_url(username, api_key):
+auth = 'apikey {}:{}'.format(username, api_key)
+headers = {'Authorization': auth}
+api_url = "https://api.threatstream.com/api/v2/intelligence/import/"
+tags = [{'name': 'public_tag'}, {'name': 'private_tag', 'tlp': 'red'}]
+url = "<your_url>"
+payload={
+'classification': 'private',
+'confidence': 70,
+'threat_type': 'malware',
+'tags': json.dumps(tags),
+'url': url
+}
+response = requests.post(api_url, headers=headers, data=payload)
+print(response.text)
+4. To import observables associated with tags that are private to your organization
+curl -X POST 'https://api.threatstream.com/api/v2/intelligence/import/' -F
+"threat_type=malware" -F "datatext=<text_to_parse_and_import>" -F
+"classification=private" -F "confidence=40" -F 'tags=[{"name":"my_tag",
+"tlp":"red"},{"name":"another_private_tag", "tlp":"red"}]' -H
+'Authorization: apikey <username>:<api_key>'
+5. To import observables and share them with trusted circles whose ids are 1 and 2:
+curl -X POST 'https://api.threatstream.com/api/v2/intelligence/import/' -F
+"confidence=80" -F "classification=private" -F "trustedcircles=1,2" -F
+"threat_type=phish" -F "datatext=<text_to_parse_and_import>" -H
+'Authorization: apikey <username>:<api_key>'
+Reference Guide
+Import
+Anomali ThreatStream API Page 32 of 262
+6. To automatically approve imported observables. An import job is created and observables are
+set to active.
+curl -X POST 'https://api.threatstream.com/api/v2/intelligence/import/' -F
+"classification=private" -F "threat_type=malware" -F 'tags=
+[{"name":"tag1","tlp":"red"}]' -F "datatext=<text_to_parse_and_import>" -F
+"default_state=active" -H 'Authorization: apikey <username>:<api_key>'
+7. To import observables and create an association between the import job and an Actor whose ID
+is 77:
+curl -X POST 'https://api.threatstream.com/api/v2/intelligence/import/' -F
+"actors=77" -F "threat_type=apt" -F "datatext=<text_to_parse_and_import>" -H
+'Authorization: apikey <username>:<api_key>'
+8. To import wildcard observables in a CSV file. The file includes structured data.
+curl-X POST 'https://api.threatstream.com/api/v2/intelligence/import/' -F
+"confidence=30" -F "classification=private" -F "threat_type=malware" -F
+"file=@<filename>" -H 'Authorization: apikey <username>:<api_key>'
+Response
+HTTP 202 Accepted {"import_session_id": IMPORT_SESSION_ID, "success": STATUS, "job_id":
+BACKGROUND_JOB_ID}
+where
+import_session_id is the ID for the import job. You will need this ID to check the status of the
+import job.
+job_id is an identifier for the job on ThreatStream.
+Example Response:
+{"job_id": "6194c7c0-53ae-41fc-a6f0-dc3d174f02e2", "success": true, "import_session_id": "482"}
+Checking status of an Import job
+Use this API call to periodically poll the status of an import job:
+curl -X GET 'https://api.threatstream.com/api/v1/importsession/import_session_
+id/' -H 'Authorization: apikey <username>:<api_key>'
+where import_session_id is the identifier that was returned in the response of the Import call.
+This call returns one of the following statuses in the "status" attribute:
+l processing—the import process is in progress. Keep polling periodically.
+l errors—the import process failed.
+l done—the import process has completed.
+Reference Guide
+Import
+Anomali ThreatStream API Page 33 of 262
+At this point, the call also returns numIndicators and numRejected attributes that denote the
+number of observables that were accepted for importing and the observables that were rejected,
+respectively. This information is the same as the one displayed on the Import Review page of the
+ThreatStream UI.
+Getting Observable ID in an Import Job
+Note: Before executing this call, make sure that the import job belongs to your organization.
+Use this API to get IDs of the observables in an import job.
+curl -X GET 'https://api.threatstream.com/api/v1/importsession/<import_session_
+id>/intelligence' -H 'Authorization: apikey <username>:<api_key>'
+where <import_session_id> is the identifier of the import job.
+This call returns the information about the import job. You can view IDs of the observables in the "id"
+attribute.
+Approving All Observables in an Import Job
+Note:
+l Before executing this call, make sure that the import job belongs to your organization.
+l You must have the Approve Intel user permission to use this API call. Org Admins can grant
+this permission from the ThreatStream user interface.
+Use this API call to approve all observables in an import job:
+curl -X PATCH 'https://api.threatstream.com/api/v1/importsession/<import_
+session_id>/approve_all' -H 'Authorization: apikey <username>:<api_key>'
+where <import_session_id> is the identifier of the import job.
+Approving Selected Observables in an Import Job
+Note:
+l Before executing this call, make sure that the import job belongs to your organization.
+l You must have the Approve Intel user permission to use this API call. Org Admins can grant
+this permission from the ThreatStream user interface.
+Use this API call to approve selected observables in an import job:
+curl -X PATCH 'https://api.threatstream.com/api/v1/importsession/<import_
+session_id>/approve_selected/?ids=<id1>,<id2>' -H 'Authorization: apikey
+<username>:<api_key>'
+where
+Reference Guide
+Import
+Anomali ThreatStream API Page 34 of 262
+<import_session_id> is the identifier of the import job.
+ids=<id1>,<id2> is a comma-separated list of IDs of the observables to be imported.
+Import (without approval)
+To import structured threat data (observables) into ThreatStream, without requiring approval of the
+imported data through the ThreatStream UI. Data payload must be specified in a valid JSON format
+that adheres to the guidelines in this article. JSON can be specified in a file or as a JSON object in
+your API request. When you import observables through the Import (without approval) API, no import
+session is created on the ThreatStream UI.
+Notes:
+l You must have the Approve Intel user permission to import without approval via the API.
+Org Admins can grant this permission from the ThreatStream user interface.
+l The size of the imported content must not exceed 10MB.
+Guidelines for Importing Observables
+Observables, even with the same value, are considered unique or distinct on ThreatStream if any of
+the following factors associated with these observables are different:
+l Observable Type (IP, Domain, URL, Email, Hash)
+l Feed IDs or source from which the observables were ingested into ThreatStream
+l Organizations to which they belong on ThreatStream
+Therefore, when importing an observable whose value, type, and feed ID match an existing
+observable in your organization, the observable is automatically discarded as a duplicate.
+All imported observables with the same value are displayed on the observable details page in the
+ThreatStream UI.
+Request
+/api/v2/intelligence/
+Important: /api/v1/intelligence/ requests are now deprecated. Anomali recommends
+using /api/v2/intelligence/ for all requests.
+HTTP Method: PATCH
+The Import (without approval) API requires that you specify payload in JSON format. It has two
+properties: meta—for specifying global settings which apply to all observables—and objects—
+which specify settings per observable.
+Reference Guide
+Import
+Anomali ThreatStream API Page 35 of 262
+Specifying global settings is not mandatory. Per observable settings take precedent over global
+settings in cases where both are specified for a given attribute. For example, if classification=private
+in the meta section, and an imported observable has classification=public at the object level, the
+indicator will be marked public.
+Meta Attributes
+The following table lists the attributes that can be specified only in the meta section.
+Attribute Type Description
+allow_
+unresolved
+boolean When set to true, domain observables included in the file which do
+not resolve will be accepted as valid in ThreatStream and imported.
+Note: If allow_unresolved is not set to true, unresolved
+domains are always ignored.
+ignore_url_
+host_whitelists
+boolean When set to true, all global whitelist checks on the host part of the
+URL will be ignored.
+By default, the attribute is set to false.
+ignore_
+whitelist
+boolean When set to true, all global whitelist checks of domains, IPs, and
+emails will be ignored.
+By default, the attribute is set to false.
+Shared Attributes
+The attributes in the table below can be used to specify settings in the meta or objects section of the
+JSON file.
+Attribute Type Description
+classification string Classification (visibility) of the indicator—public or private.
+Default: public
+confidence numeric Confidence score that you (the source) want to assign to the
+imported observable(s) based on the level of confidence you have
+about the maliciousness of the observable.
+Confidence score can range from 0-100, in increasing order of
+confidence.
+If you want ThreatStream to use the confidence value that you
+specify and not re-assess the value using its machine-learning
+algorithms, see"source_confidence_weight" on the next page.
+Note: ThreatStream only scores domain, IP, and URL
+observables. For all other observable types, you must specify
+a confidence value—either globally or per observable.
+Reference Guide
+Import
+Anomali ThreatStream API Page 36 of 262
+Attribute Type Description
+source_
+confidence_
+weight
+numeric Specifies the ratio between the amount of the source confidence
+of each observable and the Anomali's confidence. For example, if
+this setting = 30%, when calculating the final confidence, 30%
+weight is given to the confidence specified by the source of the
+observable and 70% weight is given to the confidence deemed by
+ThreatStream (based on the machine-learning algorithms).
+Notes:
+l To use your source's confidence entirely, set source_
+confidence_weight to 100.
+l source_confidence_weight can only be specified as a
+request attribute. It cannot be specified in the structured CSV
+file.
+l In ThreatStream API, you can set the source confidence
+weight granularly, from 0 to 100 using the source_
+confidence_weight attribute.
+l This setting only applies to observables for which classification
+is set to private, including those shared with trusted circles.
+l This is the same setting as the Override System Confidence
+setting in ThreatStream UI (in Imports and Feeds). When this
+setting is unchecked, source_confidence_weight is set to 0,
+meaning do not use source-reported confidence value. When
+this setting is checked, source_confidence_weight is set to
+100, meaning only use the source-reported confidence value—
+do not reassess the score using the machine-learning
+algorithms.
+Note: You cannot set this attribute granularly through the
+UI. You can only set this attribute to 0 or 100 through the
+UI.
+expiration_ts date Time stamp of when intelligence will expire on ThreatStream, in
+ISO format. For example, 2017-01-26T00:00:00.
+By default, UTC time is used. You can specify your local time by
+appending your timezone to the value. For example, to specify
+PST: 2019-04-28T14:00:00-08:00
+If a global or a local value is not specified for this attribute, by
+default 90 days is configured.
+remote_api (for
+ThreatStream
+boolean Whether intelligence is remote (stored on Cloud).
+Reference Guide
+Import
+Anomali ThreatStream API Page 37 of 262
+Attribute Type Description
+OnPrem only) This attribute does not need to be set to ingest local intelligence.
+Only use this attribute when ingesting remote intelligence from
+ThreatStream Cloud. Set this attribute to true in this case.
+Do not set this attribute to false for ingesting local intelligence.
+Doing so will generate errors.
+severity string Severity you want to assign to the observable when it is imported.
+Possible values: low, medium, high, very-high
+Default severity values are assigned based on the indicator type of
+the observable.
+source_feed_id numeric ID of a source feed.
+source_
+locations
+list of
+strings
+Source locations assigned to the imported observables.
+Possible values include letter codes of regions, countries, and
+administrative areas (US States and Washington DC only) as
+defined by STIX 2.1.
+For example, eastern-africa, central-asia, europe, africa,
+NL, GB, US-FL, and US-MO.
+tags string Tags applied to the imported observables.
+Tags must be specified as follows:
+tags: [{"name": "my_tag","tlp": "red"},{"name": "my_
+tag2","tlp": "clear"},{"name": "my_tag3"}]
+Tag Attributes:
+l name—name of the tag that you want to add.
+l tlp—the visibility setting for the tag. Possible values: red,
+amber, amber+strict, green, clear.
+l red—private, or visible to your organization only.
+l white—public, or visible to all ThreatStream users with access
+to the data. Default: white.
+Note: Adding public tags may be restricted by your
+Organization Administrator.
+In the example above, my_tag is private and my_tag2 and my_
+tag3 are public.
+target_industry list of Target industries assigned to the imported observables. Possible
+Reference Guide
+Import
+Anomali ThreatStream API Page 38 of 262
+Attribute Type Description
+strings values are defined by the STIX 2.1 Industry Sector vocabulary.
+For example, chemical, financial-services, and
+government-regional.
+target_locations list of
+strings
+Target locations assigned to the imported observables.
+Possible values include letter codes of regions, countries, and
+administrative areas (US States and Washington DC only) as
+defined by STIX 2.1.
+For example, eastern-africa, central-asia, europe, africa,
+NL, GB, US-FL, and US-MO.
+trustedcircles list ID of the trusted circle with which this threat data should be
+shared. If you want to import the threat data to multiple trusted
+circles, enter a list of comma-separated IDs.
+Tip: To find the ID of a trusted circle, locate the trusted circle
+on ThreatStream, click on its name. The URL displayed in the
+address bar shows the ID. For example,
+https://ui.threatstream.com/search?trustedcircles=13.
+Required Fields
+Fields which must contain data vary based on the type of observable. The following table lists the
+mandatory fields for each observable type.
+Observable Type Required Fields
+Domain domain, itype
+Email email, itype, confidence
+Hash md5, itype, confidence
+IP srcip, itype
+URL url, itype
+Response
+HTTP 202 Accepted
+Note: This response indicates that the JSON you submitted was valid. However, in cases where
+data is incorrect or required fields are left unspecified, observables can be ignored or imported
+as false positive. For example, if confidence is not specified for md5 or email observables, the
+observables are imported as false positive. Alternatively, if allow_unresolved is not set to true
+when importing unresolved domains, these observables will be ignored.
+Reference Guide
+Import
+Anomali ThreatStream API Page 39 of 262
+Examples
+1. To import private observables of different types:
+curl example:
+curl -X PATCH 'https://api.threatstream.com/api/v2/intelligence/' -H
+'Content-Type: application/json' -H 'Authorization: apikey <username>:<api_
+key>' --data @/<folder_path>/indicators.json
+where indicators.json contains the following data:
+{
+"meta":{
+"classification":"private",
+"confidence":60
+},
+"objects":[
+{
+"srcip":"1.2.3.4",
+"itype":"bot_ip",
+"tags":[
+{
+"name": "private_tag",
+"tlp": "red"
+},
+{
+"name": "public_tag",
+"tlp": "white"
+}
+],
+"severity":"high"
+},
+{
+"domain":"idfsdszqylwjzq.biz",
+"itype":"mal_domain",
+"severity":"very-high"
+},
+{
+"url":"http://malicious.pl/wp-content/themes/credenza-wp/cr_
+mss3.exe",
+"itype":"mal_url",
+"severity":"high"
+},
+{
+"email":"email@domain.com",
+"itype":"compromised_email",
+Reference Guide
+Import
+Anomali ThreatStream API Page 40 of 262
+"tags":[
+{
+"name": "private_tag",
+"tlp": "red"
+},
+{
+"name": "public_tag",
+"tlp": "white"
+}
+],
+"severity":"low"
+},
+{
+"md5":"1d37556b8aeb5cb5fbf08cd5b4790075",
+"itype":"apt_md5",
+"severity":"medium",
+"expiration_ts":"2017-01-26T00:00:00"
+}
+]
+}
+Python example:
+def import_without_approval(username, api_key):
+auth = 'apikey {}:{}'.format(username, api_key)
+headers = {'Authorization': auth}
+url = "https://api.threatstream.com/api/v2/intelligence/"
+payload = {
+"meta": {
+"confidence": 60,
+"allow_unresolved": True,
+"classification": "private"
+},
+"objects": [
+{
+"value": ""msfbckupsc.com",
+"itype": ""apt_domain",
+"severity": "high",
+"tags": [{"name": "private_tag", "tlp": "red"}]
+},
+{
+"value": "106.210.164.198",
+"itype": "mal_ip",
+"severity": "high"
+}
+]
+Reference Guide
+Import
+Anomali ThreatStream API Page 41 of 262
+}
+response = requests.patch(url, headers=headers, json=payload)
+print (response.status_code)
+print (response.content)
+2. To import an IP address with the minimum required fields:
+curl -X PATCH 'https://api.threatstream.com/api/v2/intelligence/?' -H
+'Authorization: apikey <username>:<api_key>' -H 'Content-Type:
+application/json' --data @/<folder_path>/indicators.json
+where indicators.json contains the following data:
+{ 
+"objects":[ 
+{ 
+"srcip":"5.253.63.134",
+"itype":"bot_ip"
+}
+]
+}
+3. To import an email address with one private and one public tag:
+curl -X PATCH 'https://api.threatstream.com/api/v2/intelligence/' -H
+'Authorization: apikey <username>:<api_key>' -H 'Content-Type:
+application/json' --data @/<folder_path>/indicators.json
+where indicators.json contains the following data:
+{
+"meta":{
+"classification":"public",
+"tags":[
+{
+"name":"private_tag",
+"tlp":"red"
+},
+{
+"name":"public_tag",
+"tlp":"white"
+}
+]
+},
+"objects":[
+{
+Reference Guide
+Import
+Anomali ThreatStream API Page 42 of 262
+"email":"email@test.com",
+"itype":"apt_email"
+}
+]
+}
+4. To import an email address with the minimum required fields and globally configured
+classification:
+curl -X PATCH 'https://api.threatstream.com/api/v2/intelligence/' -H
+'Authorization: apikey <username>:<api_key>' -H 'Content-Type:
+application/json' --data @/<folder_path>/indicators.json
+where indicators.json contains the following data:
+{ 
+"meta":{ 
+"classification":"private"
+},
+"objects":[ 
+{ 
+"email":"joe@example.com",
+"itype":"mal_email"
+}
+]
+}
+5. To import a domain and use the specified confidence score entirely:
+curl -X PATCH 'https://api.threatstream.com/api/v2/intelligence/' -H
+'Authorization: apikey <username>:<api_key>' -H 'Content-Type:
+application/json' --data @/<folder_path>/indicators.json
+where indicators.json contains the following data:
+{
+"meta":{ 
+"source_confidence_weight":100
+},
+"objects":[ 
+{ 
+"domain":"www.example.com",
+"itype":"apt_domain",
+"confidence":99
+}
+Reference Guide
+Import
+Anomali ThreatStream API Page 43 of 262
+]
+}
+6. To import IP addresses with confidence specified globally and per observable:
+curl -X PATCH 'https://api.threatstream.com/api/v2/intelligence/' -H
+'Authorization: apikey <username>:<api_key>' -H 'Content-Type:
+application/json' --data @/<folder_path>/indicators.json
+where indicators.json contains the following data:
+{ 
+"meta":{ 
+"confidence":100
+},
+"objects":[ 
+{ 
+"srcip":"345.678.45.7",
+"itype":"mal_ip",
+"confidence":50
+},
+{ 
+"srcip":"322.609.78.33",
+"itype":"apt_ip"
+}
+]
+}
+In the above example, the confidence value specified for the first observable overrides the
+globally specified confidence value.
