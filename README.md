@@ -205,11 +205,14 @@ KEV_TAG_NAME=cisa_kev
 KEV_TAG_TLP=red
 THREATSTREAM_THREAT_MODEL_SEARCH_PATH=/api/v1/threat_model_search/
 THREATSTREAM_VULNERABILITY_PATH=/api/v1/vulnerability/
+THREATSTREAM_VULNERABILITY_TAG_PATH_TEMPLATE=/api/v1/vulnerability/{id}/tag/
 ```
 
 The watcher stores processed CVEs in `kev_watcher_state.json`, which is ignored by git.
 
 The updated API reference documents the Threat Model search endpoint used by the watcher:
 `/api/v1/threat_model_search/?model_type=vulnerability&name=<CVE>&trusted_circle_ids=310`.
-The write endpoints for tagging and placeholder vulnerability creation are tenant-configurable through
-the `.env` path settings above; run `--dry-run` first to confirm the CVEs that would be processed.
+For existing matches, the watcher uses the documented tag endpoint:
+`POST /api/v1/vulnerability/<id>/tag/` with `{"tags": [{"name": "cisa_kev", "tlp": "red"}]}`.
+The placeholder vulnerability creation path remains tenant-configurable through the `.env` path
+settings above; run `--dry-run` first to confirm the CVEs that would be processed.

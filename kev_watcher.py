@@ -29,6 +29,7 @@ DEFAULT_TAG_NAME = "cisa_kev"
 DEFAULT_TAG_TLP = "red"
 DEFAULT_SEARCH_PATH = "/api/v1/threat_model_search/"
 DEFAULT_VULNERABILITY_PATH = "/api/v1/vulnerability/"
+DEFAULT_VULNERABILITY_TAG_PATH_TEMPLATE = "/api/v1/vulnerability/{id}/tag/"
 
 
 class KevWatcherError(RuntimeError):
@@ -99,11 +100,13 @@ class ThreatStreamClient:
         base_url: str = DEFAULT_BASE_URL,
         search_path: str = DEFAULT_SEARCH_PATH,
         vulnerability_path: str = DEFAULT_VULNERABILITY_PATH,
+        vulnerability_tag_path_template: str = DEFAULT_VULNERABILITY_TAG_PATH_TEMPLATE,
         timeout: int = 30,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.search_path = search_path
         self.vulnerability_path = vulnerability_path
+        self.vulnerability_tag_path_template = vulnerability_tag_path_template
         self.timeout = timeout
         self.headers = {
             "Authorization": f"apikey {username}:{api_key}",
@@ -126,12 +129,12 @@ class ThreatStreamClient:
         return [obj for obj in objects if obj.get("name") == cve_id]
 
     def add_tag_to_vulnerability(self, vulnerability: dict[str, Any], tag_name: str, tag_tlp: str) -> dict[str, Any]:
-        resource_uri = vulnerability.get("resource_uri")
-        if not resource_uri:
-            raise ThreatStreamError("Matched vulnerability did not include resource_uri")
+        vulnerability_id = _threat_model_id(vulnerability)
+        if not vulnerability_id:
+            raise ThreatStreamError("Matched vulnerability did not include id or resource_uri")
 
-        tags = _merge_tag(vulnerability.get("tags"), tag_name, tag_tlp)
-        return self._request("PATCH", resource_uri, body={"tags": tags})
+        path = self.vulnerability_tag_path_template.format(id=vulnerability_id)
+        return self._request("POST", path, body={"tags": [{"name": tag_name, "tlp": tag_tlp}]})
 
     def create_placeholder_vulnerability(
         self,
@@ -224,6 +227,10 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
         base_url=os.environ.get("THREATSTREAM_BASE_URL") or DEFAULT_BASE_URL,
         search_path=os.environ.get("THREATSTREAM_THREAT_MODEL_SEARCH_PATH") or DEFAULT_SEARCH_PATH,
         vulnerability_path=os.environ.get("THREATSTREAM_VULNERABILITY_PATH") or DEFAULT_VULNERABILITY_PATH,
+        vulnerability_tag_path_template=(
+            os.environ.get("THREATSTREAM_VULNERABILITY_TAG_PATH_TEMPLATE")
+            or DEFAULT_VULNERABILITY_TAG_PATH_TEMPLATE
+        ),
     )
 
     results: list[dict[str, Any]] = []
@@ -335,19 +342,16 @@ def _build_url(base_url: str, path_or_url: str, query: dict[str, Any] | None = N
     return url
 
 
-def _merge_tag(existing_tags: Any, tag_name: str, tag_tlp: str) -> list[dict[str, str]]:
-    tags: list[dict[str, str]] = []
-    if isinstance(existing_tags, list):
-        for tag in existing_tags:
-            if isinstance(tag, dict) and tag.get("name"):
-                clean_tag = {"name": str(tag["name"])}
-                if tag.get("tlp"):
-                    clean_tag["tlp"] = str(tag["tlp"])
-                tags.append(clean_tag)
+def _threat_model_id(threat_model: dict[str, Any]) -> str | None:
+    if threat_model.get("id") is not None:
+        return str(threat_model["id"])
 
-    if not any(tag.get("name") == tag_name for tag in tags):
-        tags.append({"name": tag_name, "tlp": tag_tlp})
-    return tags
+    resource_uri = threat_model.get("resource_uri")
+    if not isinstance(resource_uri, str):
+        return None
+
+    parts = [part for part in resource_uri.strip("/").split("/") if part]
+    return parts[-1] if parts else None
 
 
 def _vulnerabilities_added_since(vulnerabilities: list[Any], days_back: int) -> list[dict[str, Any]]:
