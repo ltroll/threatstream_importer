@@ -3124,3 +3124,273 @@ search/?limit=100&remote_api=true'-H 'Authorization: apikey
 not specified) from ThreatStream Cloud:
 curl 'https://<ThreatStream_OnPrem_IP_or_FQDN>/api/v1/threat_model_
 search/?model_type=actor&remote_api=true'-H 'Authorization: apikey
+
+
+Threat Model Entity and Observable Tags
+ThreatStream enables you to add tags to intelligence for purposes of filtering for related entities.
+Tags canbemadevisible to your organization only or to all ThreatStream users with access to the
+data. You can addtagstoobservables and threat model entities.
+Additionally, you can manage observable and threat model entity tags in bulk. See "Observable Tags
+in Bulk" on the next page and "Threat Model Entity Tags in Bulk" on page 182 for more information.
+Request
+/api/v1/<entity_type>/<entity_id>/tag/
+where <entity_type>is the type of threat model entity on which you are adding the tag (actor,
+attackpattern, campaign, incident, intelligence (observables), malware, signature,
+tipreport, ttp, or vulnerability)
+<entity_id> is the ID of the threat model entity or tag on which you are adding the association
+HTTPMethod:POST
+Attributes
+Description
+Attribute
+ids
+tags
+Unique IDs of the threat model entities or observables to which you are adding tags.
+Tags applied to the specified threat model entities or observables.
+Tags mustbespecified as follows:
+tags: [{"name": "my_tag","tlp": "red"},{"name": "my_tag2","tlp":
+"clear"},{"name": "my_tag3"}]
+Tag Attributes:
+l name—nameofthetagthatyouwanttoadd.
+l tlp—thevisibility setting for the tag. Possible values: red, amber,
+amber+strict, green, clear.
+l red—private, or visible to your organization only.
+l white—public, or visible to all ThreatStream users with access to the data.
+Default: white.
+Note: Adding public tags may be restricted by your Organization
+Administrator.
+Anomali ThreatStream API
+Page175of262
+Reference Guide
+Threat Model Entity and Observable Tags
+In the example above, my_tag is private and my_tag2 and my_tag3 are public.
+Examples
+1. Toaddaprivatetagtoanobservable whoseIDis4744:
+curl-X POST-d'{"tags": [{"name": "test","tlp":
+"red"}]}''https://api.threatstream.com/api/v2/intelligence/4744/tag/'-H
+'Content-Type:application/json'-H 'Authorization:apikey <username>:<api_key>'
+2. Toaddapublictagandaprivatetagtoanactor whoseID is35:
+curl-X POST-d'{"tags": [{"name": "january_attack","tlp": "white"},{"name":
+"PHI", "tlp": "red"}]}' 'https://api.threatstream.com/api/v1/actor/35/tag/'-H
+'Content-Type:application/json'-H 'Authorization:apikey <username>:<api_key>'
+Observable Tags in Bulk
+ThreatStream enables you to add and remove observable tags in bulk. You can use the information
+in this section to manage tags associated with sets of observables through the API.
+Adding Observable Tags in Bulk
+Request
+/api/v2/intelligence/bulk_tagging/
+Important: /api/v1/intelligence/ requests are now deprecated. Anomali recommends
+using /api/v2/intelligence/ for all requests.
+HTTPMethod:POST
+Attributes
+Description
+Attribute
+ids
+tags
+Unique IDs of the observables to which you are adding tags.
+Tags that will be applied to the specified observables.
+Tags mustbespecified as follows:
+tags: [{"name": "my_tag","tlp": "red"},{"name": "my_tag2","tlp":
+"clear"},{"name": "my_tag3"}]
+Tag Attributes:
+l name—nameofthetagthatyouwanttoadd.
+Anomali ThreatStream API
+Page176of262
+l tlp—thevisibilitysettingforthetag.Possiblevalues:red,amber,
+amber+strict,green,clear.
+l red—private,orvisibletoyourorganizationonly.
+l white—public,orvisibletoallThreatStreamuserswithaccesstothedata.
+Default:white.
+Note:AddingpublictagsmayberestrictedbyyourOrganization
+Administrator.
+Intheexampleabove,my_tagisprivateandmy_tag2andmy_tag3arepublic.
+Bydefault,youcanmanageupto250tagsinbulk.Ifyouneedtomanageupmore
+than250tagsinbulk,see"Managingupto10,000TagsinBulk"onthenextpagefor
+moreinformation.
+Example
+ToaddaprivatetagtoasetofobservableswhoseIDsare61,52,8,50,34:
+curl-X POST-d'{"tags":[{"name": "test", "tlp": "red"}], "ids": [61, 52, 8, 50,
+34]}' 'https://api.threatstream.com/api/v2/intelligence/bulk_tagging/'-H 'Content
+Type:application/json'-H 'Authorization:apikey <username>:<api_key>'
+RemovingObservableTagsinBulk
+Request
+/api/v2/intelligence/bulk_tagging/
+Important: /api/v1/intelligence/requestsarenowdeprecated.Anomalirecommends
+using/api/v2/intelligence/forallrequests.
+HTTPMethod:POST
+Attributes
+Attribute Description
+ids UniqueIDsoftheobservablesfromwhichyouareremovingtags.
+tags Tagsthatwillberemovedfromthespecifiedobservables.
+Tagsmustbespecifiedasfollows:
+tags: [{"name": "my_tag","tlp": "red"},{"name": "my_tag2","tlp":
+"clear"},{"name": "my_tag3"}]
+ReferenceGuide
+ThreatModelEntityandObservableTags
+AnomaliThreatStreamAPI Page177of262
+Reference Guide
+Threat Model Entity and Observable Tags
+Tag Attributes:
+l name—nameofthetagthatyouwanttoadd.
+l tlp—thevisibility setting for the tag. Possible values: red, amber,
+amber+strict, green, clear.
+l red—private, or visible to your organization only.
+l white—public, or visible to all ThreatStream users with access to the data.
+Default: white.
+Note: Adding public tags may be restricted by your Organization
+Administrator.
+In the example above, my_tag is private and my_tag2 and my_tag3 are public.
+Bydefault, you can manage upto250tagsinbulk. If you need to manage upmore
+than 250 tags in bulk, see "Managing up to 10,000 Tags in Bulk" below for more
+information.
+remove_
+tags
+Example
+Tags mustbespecified as follows:
+remove_tags: [{“name”:"my_tag"},{"name":"my_tag2"},{"name":"my_
+tag3"}]
+Toremovetwotagsfromasetofobservables whoseIDsare776and349:
+curl-X POST-d'{"remove_tags": [{"name": ["test", "tagB"]}],"ids": [776, 349]}'
+'https://api.threatstream.com/api/v2/intelligence/bulk_tagging/'-H 'Authorization:
+apikey <username>:<api_key>'-H 'Content-Type:application/json'
+Managing up to 10,000 Tags in Bulk
+Bydefault, you can add and delete up to 250 tags in bulk. If you need to manage up to 10,000 tags,
+you candosobyspecifying a dataset to which tags will be applied or from which tags will be
+removed.
+Whenyouaddorremoveupto10,000tagsinbulk,anasynchronousjobiscreated. Once the job is
+completed successfully, you must get the results of the job to finish the procedure. You can create
+one job at atime. Otherwise, making this API call will result in an error.
+Requests
+1. /api/v2/intelligence/bulk_tagging/?async_result=true—POST requesttocreatean
+asynchronous job.
+Anomali ThreatStream API
+Page178of262
+ThisrequestrequiresthatyouspecifypayloadinJSONformat.Payloadconsistsofthequery
+objectthatcreatesadataset,andthelistoftagstobeaddedand/orremovedfromobservables
+inthedataset.
+2. /api/v1/generic_async_result/<id>/—GET requesttocheckthestatusofthejob.The
+jobmusthavethe"done"status
+PayloadParameters
+Parameter Type Description
+query object Payloadobjectthatspecifiesthedatasetandhasthe
+followingparameters:q,limit,andorder_by.The
+parametersaredescribedinthistablebelow.
+Forexample,query: {"q": "(status = active) and
+(created_ts >= 2022-10-01T23:00:00)", "limit":
+10000, order_by: "-created_ts"}
+q string Parameterinthequeryobjectthatfiltersouttheobservables
+towhichtagswillbeaddedorfromwhichthetagswillbe
+removed.
+Forexample,q: "(status = active) and (created_ts
+>= 2022-10-01T23:00:00)"willcreateadatasetofactive
+observablescreatedatthespecifiedtime.
+limit integer Parameterinthequeryobject,maximumnumberof
+observablestowhichtagswillbeaddedorfromwhichtags
+willberemoved.
+Forexample,limit: 10000
+Youcanmanageupto10,000observablesinbulk.
+order_by string Parameterinthequeryobject,anobservableattributeby
+whichtheobservablesinthedatasetwillbeordered.
+Forexample,order_by: "-created_ts"
+tags arrayofstrings Tagsthatwillbeaddedtotheselectedobservables.
+Forexample,tags: [{"name":"my_tag", tlp: "red"}]
+remove_tags arrayofstrings Tagsthatwillberemovedfromtheselectedobservables.
+Forexample,remove_tags: [{"name":"my_tag2", tlp:
+"red"}]
+ReferenceGuide
+ThreatModelEntityandObservableTags
+AnomaliThreatStreamAPI Page179of262
+Reference Guide
+Threat Model Entity and Observable Tags
+Example
+1. Toaddtheprivatemy_tagtagandremovetheprivate my_tag2 tag from the active observables
+created on a specific date and ordered by date of creation:
+Anomali ThreatStream API
+Page180of262
+Reference Guide
+Threat Model Entity and Observable Tags
+curl-X POST 'https://api.threatstream.com/api/v2/intelligence/bulk_
+tagging/?async_result=true'-H 'Content-Type:application/json'-H
+'Authorization: apikey <username>:<api_key>'-d '{"query":{"q": "(status =
+active) and (created_ts >= 2022-10-01T23:00:00)", "limit": 10000, "order_by": "
+created_ts"}, "remove_tags": [{"name":"my_tag2", "tlp": "red"}], "tags":
+[{"name": "my_tag", "tlp": "red"}]}'
+Results returned are similar to the following:
+created_ts: "2022-11-01T21:10:56.008462"
+id: <id>
+modified_ts: "2022-11-01T21:10:56.008475"
+path: "/api/v2/intelligence/bulk_tagging/"
+resource_uri: "/api/vl/generic_async_result/<id>/"
+response_status: null
+status: "inprogress"
+where <id>is the unique ID of the job. You will use this value to check the status of the job and
+return the results after its completion.
+2. Tocheckthestatusof the job using the commandlisted for resource_uri:
+curl 'https://api.threatstream.com/api/v1/generic_async_result/<id>/'-H
+'Content Type:application/json'-H 'Authorization: apikey <username>:<api_key>'
+where <id>is the unique ID of the job.
+Results returned are similar to the following:
+created_ts: "2022-11-01T21:10:56.008462"
+id: <id>
+modified_ts: "2022-11-01T21:10:56.008475"
+path: "/api/v2/intelligence/bulk_tagging/"
+resource_uri: "/api/vl/generic_async_result/<id>/"
+response_status: null
+status: "inprogress"
+Repeat this call until you see the following values:
+response_status: 200
+status: "done"
+This indicates that the job is complete and ready to return the results.
+3. Returntheresults of the completed job:
+curl 'https://api.threatstream.com/api/v1/generic_async_result/<id>/get_
+result/'-H 'Authorization: apikey <username>:<api_key>'
+Anomali ThreatStream API
+Page181of262
+ThreatModelEntityTagsinBulk
+ThreatStreamenablesyoutomanagetagsofThreatModelentitiesinbulk.Youcanusethe
+informationinthissectiontoaddanddeletetagsassociatedwithsetsofthefollowingentities:Actors,
+AttackPatterns,Campaigns,Incidents,Malware,Signatures,ThreatBulletins,TTPs,and
+Vulnerabilities.
+Request
+/api/v1/<entity_type>/bulk_tagging/
+where<entity_type>isthetypeofthreatmodelentityonwhichyouareaddingthetag(actor,
+attackpattern,campaign,incident,malware,signature,tipreport,ttp,orvulnerability.)
+HTTPMethod:POST
+Attributes
+Attribute Description
+ids UniqueIDsoftheThreatModelentitiestowhichyouareaddingtags.
+remove_
+tags
+Tagsmustbespecifiedasfollows:
+remove_tags:[{“name”:"my_tag"},{"name":"my_tag2"},{"name":"my_
+tag3"}]
+Bydefault,youcandeleteupto25tagsinbulkfromathreatmodelentity.
+tags TagsthatwillbeappliedtothespecifiedThreatModelentities.
+Tagsmustbespecifiedasfollows:
+tags: [{"name": "my_tag","tlp": "red"},{"name": "my_tag2","tlp":
+"clear"},{"name": "my_tag3"}]
+TagAttributes:
+l name—nameofthetagthatyouwanttoadd.
+l tlp—thevisibilitysettingforthetag.Possiblevalues:red,amber,
+amber+strict,green,clear.
+l red—private,orvisibletoyourorganizationonly.
+l white—public,orvisibletoallThreatStreamuserswithaccesstothedata.
+Default:white.
+Note:AddingpublictagsmayberestrictedbyyourOrganization
+Administrator.
+Intheexampleabove,my_tagisprivateandmy_tag2andmy_tag3arepublic.
+Bydefault,youcanaddupto25tagsinbulktoathreatmodelentity.
+ReferenceGuide
+ThreatModelEntityandObservableTags
+AnomaliThreatStreamAPI Page182of262
+Reference Guide
+Threat Model Entity and Observable Tags
+Example
+Toaddtagsprivate_tag1, private_tag2, andpublic_tagtoasetofactors whoseIDsare655,
+2784, 2785 andtoremovetag4fromtheseactors:
+curl-X POST 'https://api.threatstream.com/api/v1/actor/bulk_tagging/'-d '
+{"ids": [655, 2784, 2785], "tags": [{"name":"private_tag1", "tlp":"red"},
+{"name":"public_tag", "tlp":"white"}, {"name":"private_tag3", "tlp":"red"}],
+"remove_tags": [{"name":"tag4"}]}'-H 'content-type: application/json'-H
+'Authorization:apikey <username>:<apikey>'
+Anomali ThreatStream API
+Page183of262
