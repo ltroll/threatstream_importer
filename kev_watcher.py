@@ -128,26 +128,25 @@ class ThreatStreamClient:
             raise ThreatStreamError("ThreatStream search response did not contain an objects list")
         return [obj for obj in objects if obj.get("name") == cve_id]
 
-    def add_tag_to_vulnerability(self, vulnerability: dict[str, Any], tag_name: str, tag_tlp: str) -> dict[str, Any]:
+    def add_tags_to_vulnerability(self, vulnerability: dict[str, Any], tags: list[dict[str, str]]) -> dict[str, Any]:
         vulnerability_id = _threat_model_id(vulnerability)
         if not vulnerability_id:
             raise ThreatStreamError("Matched vulnerability did not include id or resource_uri")
 
         path = self.vulnerability_tag_path_template.format(id=vulnerability_id)
-        return self._request("POST", path, body={"tags": [{"name": tag_name, "tlp": tag_tlp}]})
+        return self._request("POST", path, body={"tags": tags})
 
     def create_placeholder_vulnerability(
         self,
         kev_vulnerability: dict[str, Any],
         trusted_circle_id: str,
-        tag_name: str,
-        tag_tlp: str,
+        tags: list[dict[str, str]],
     ) -> dict[str, Any]:
         cve_id = kev_vulnerability["cveID"]
         payload = {
             "name": cve_id,
             "description": _placeholder_description(kev_vulnerability),
-            "tags": [{"name": tag_name, "tlp": tag_tlp}],
+            "tags": tags,
             "trusted_circle_ids": [int(trusted_circle_id)],
         }
         return self._request("POST", self.vulnerability_path, body=payload)
@@ -189,8 +188,8 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
     )
 
     trusted_circle_id = args.trusted_circle_id or os.environ.get("KEV_TRUSTED_CIRCLE_ID") or DEFAULT_TRUSTED_CIRCLE_ID
-    tag_name = args.tag_name or os.environ.get("KEV_TAG_NAME") or DEFAULT_TAG_NAME
     tag_tlp = args.tag_tlp or os.environ.get("KEV_TAG_TLP") or DEFAULT_TAG_TLP
+    tags = _tag_objects(_resolve_tag_names(args), tag_tlp)
 
     if args.dry_run:
         results = [
@@ -202,7 +201,7 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
                     "name": vulnerability.get("cveID"),
                     "trusted_circle_ids": trusted_circle_id,
                 },
-                "tag": {"name": tag_name, "tlp": tag_tlp},
+                "tags": tags,
             }
             for vulnerability in new_vulnerabilities
             if vulnerability.get("cveID")
@@ -241,10 +240,10 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
 
         matches = client.search_vulnerability(cve_id, trusted_circle_id)
         if matches:
-            updated = client.add_tag_to_vulnerability(matches[0], tag_name, tag_tlp)
+            updated = client.add_tags_to_vulnerability(matches[0], tags)
             action = "tagged_existing"
         else:
-            updated = client.create_placeholder_vulnerability(vulnerability, trusted_circle_id, tag_name, tag_tlp)
+            updated = client.create_placeholder_vulnerability(vulnerability, trusted_circle_id, tags)
             action = "created_placeholder"
 
         state["processed_cves"][cve_id] = {
@@ -279,7 +278,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--kev-url", default=None, help="CISA KEV JSON URL. GitHub blob URLs are converted to raw.")
     parser.add_argument("--state-file", default=None, help=f"State file path. Default: {DEFAULT_STATE_FILE}")
     parser.add_argument("--trusted-circle-id", default=None, help=f"Trusted circle ID. Default: {DEFAULT_TRUSTED_CIRCLE_ID}")
-    parser.add_argument("--tag-name", default=None, help=f"Tag to add. Default: {DEFAULT_TAG_NAME}")
+    parser.add_argument(
+        "--tag-name",
+        default=None,
+        help=f"Comma-separated tag name(s) to add. Default: {DEFAULT_TAG_NAME}",
+    )
     parser.add_argument("--tag-tlp", default=None, help=f"Tag TLP. Default: {DEFAULT_TAG_TLP}")
     parser.add_argument("--interval", type=int, default=None, help="Loop interval in seconds. Default: 600.")
     parser.add_argument(
@@ -352,6 +355,24 @@ def _threat_model_id(threat_model: dict[str, Any]) -> str | None:
 
     parts = [part for part in resource_uri.strip("/").split("/") if part]
     return parts[-1] if parts else None
+
+
+def _resolve_tag_names(args: argparse.Namespace) -> list[str]:
+    tag_value = (
+        args.tag_name
+        or os.environ.get("KEV_TAG_OVERRIDE")
+        or os.environ.get("kev_tag_override")
+        or os.environ.get("KEV_TAG_NAME")
+        or DEFAULT_TAG_NAME
+    )
+    tag_names = [tag.strip() for tag in tag_value.split(",") if tag.strip()]
+    if not tag_names:
+        raise ValueError("At least one KEV tag must be configured")
+    return tag_names
+
+
+def _tag_objects(tag_names: list[str], tag_tlp: str) -> list[dict[str, str]]:
+    return [{"name": tag_name, "tlp": tag_tlp} for tag_name in tag_names]
 
 
 def _vulnerabilities_added_since(vulnerabilities: list[Any], days_back: int) -> list[dict[str, Any]]:

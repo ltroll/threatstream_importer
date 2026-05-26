@@ -202,11 +202,20 @@ KEV_WATCH_INTERVAL_SECONDS=600
 KEV_WATCHER_STATE_FILE=kev_watcher_state.json
 KEV_TRUSTED_CIRCLE_ID=310
 KEV_TAG_NAME=cisa_kev
+KEV_TAG_OVERRIDE=
 KEV_TAG_TLP=red
 THREATSTREAM_THREAT_MODEL_SEARCH_PATH=/api/v1/threat_model_search/
 THREATSTREAM_VULNERABILITY_PATH=/api/v1/vulnerability/
 THREATSTREAM_VULNERABILITY_TAG_PATH_TEMPLATE=/api/v1/vulnerability/{id}/tag/
 ```
+
+To apply org-specific tags instead of only `cisa_kev`, set a comma-separated override:
+
+```bash
+KEV_TAG_OVERRIDE=company_cisa_kev,pir-004,ir-004-02
+```
+
+The lowercase form `kev_tag_override=company_cisa_kev,pir-004,ir-004-02` is also supported.
 
 The watcher stores processed CVEs in `kev_watcher_state.json`, which is ignored by git.
 
