@@ -1,0 +1,7 @@
+Searching for a specific vulnerabilty:
+
+(model_type = "vulnerability") AND (name = "CVE-2026-9552")
+
+Search for a specific vulnerability from a trusted circle:
+
+(model_type = "vulnerability") AND (name = "CVE-2026-9552") AND (trusted_circle_id = 310)
