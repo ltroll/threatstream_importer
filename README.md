@@ -175,6 +175,18 @@ Start the watcher loop. It checks every 10 minutes by default:
 python3 kev_watcher.py
 ```
 
+Run once for cron:
+
+```bash
+python3 kev_watcher.py --run-once
+```
+
+Test against KEVs added in the last 5 days:
+
+```bash
+python3 kev_watcher.py --run-once --dry-run --day 5
+```
+
 On the first real run, the script records the current KEV catalog as its baseline and does not process
 all existing KEVs. To process the full current catalog intentionally, use:
 

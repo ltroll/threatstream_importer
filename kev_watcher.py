@@ -8,7 +8,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -73,10 +73,14 @@ def get_new_vulnerabilities(
     state: dict[str, Any],
     *,
     process_existing: bool = False,
+    days_back: int | None = None,
 ) -> list[dict[str, Any]]:
     vulnerabilities = kev_catalog.get("vulnerabilities")
     if not isinstance(vulnerabilities, list):
         raise KevWatcherError("KEV catalog did not include a vulnerabilities list")
+
+    if days_back is not None:
+        return _vulnerabilities_added_since(vulnerabilities, days_back)
 
     seen = set(state.get("seen_cves", []))
     if not seen and not process_existing:
@@ -178,6 +182,7 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
         catalog,
         state,
         process_existing=args.process_existing,
+        days_back=args.days_back,
     )
 
     trusted_circle_id = args.trusted_circle_id or os.environ.get("KEV_TRUSTED_CIRCLE_ID") or DEFAULT_TRUSTED_CIRCLE_ID
@@ -202,6 +207,7 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
         return {
             "catalogVersion": catalog.get("catalogVersion"),
             "dateReleased": catalog.get("dateReleased"),
+            "selection": _selection_summary(args),
             "new_count": len(new_vulnerabilities),
             "results": results,
             "state_file": state_file,
@@ -251,6 +257,7 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
     return {
         "catalogVersion": catalog.get("catalogVersion"),
         "dateReleased": catalog.get("dateReleased"),
+        "selection": _selection_summary(args),
         "new_count": len(new_vulnerabilities),
         "results": results,
         "state_file": state_file,
@@ -268,7 +275,21 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--tag-name", default=None, help=f"Tag to add. Default: {DEFAULT_TAG_NAME}")
     parser.add_argument("--tag-tlp", default=None, help=f"Tag TLP. Default: {DEFAULT_TAG_TLP}")
     parser.add_argument("--interval", type=int, default=None, help="Loop interval in seconds. Default: 600.")
-    parser.add_argument("--once", action="store_true", help="Run one check and exit.")
+    parser.add_argument(
+        "--once",
+        "--run-once",
+        action="store_true",
+        dest="once",
+        help="Run one check and exit. Useful when scheduling with cron.",
+    )
+    parser.add_argument(
+        "--day",
+        "--days",
+        type=int,
+        dest="days_back",
+        default=None,
+        help="Process KEVs added within the last N days, bypassing saved-state filtering.",
+    )
     parser.add_argument(
         "--process-existing",
         action="store_true",
@@ -327,6 +348,29 @@ def _merge_tag(existing_tags: Any, tag_name: str, tag_tlp: str) -> list[dict[str
     if not any(tag.get("name") == tag_name for tag in tags):
         tags.append({"name": tag_name, "tlp": tag_tlp})
     return tags
+
+
+def _vulnerabilities_added_since(vulnerabilities: list[Any], days_back: int) -> list[dict[str, Any]]:
+    if days_back < 0:
+        raise ValueError("--day/--days must be 0 or greater")
+
+    cutoff = (datetime.now(timezone.utc).date() - timedelta(days=days_back)).isoformat()
+    selected: list[dict[str, Any]] = []
+    for vulnerability in vulnerabilities:
+        if not isinstance(vulnerability, dict):
+            continue
+        date_added = vulnerability.get("dateAdded")
+        if isinstance(date_added, str) and date_added >= cutoff:
+            selected.append(vulnerability)
+    return selected
+
+
+def _selection_summary(args: argparse.Namespace) -> dict[str, Any]:
+    if args.days_back is not None:
+        return {"mode": "days_back", "days": args.days_back}
+    if args.process_existing:
+        return {"mode": "process_existing"}
+    return {"mode": "new_since_state"}
 
 
 def _placeholder_description(vulnerability: dict[str, Any]) -> str:
