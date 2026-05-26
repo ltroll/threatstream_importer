@@ -345,10 +345,17 @@ def _threatstream_description(nvd_item: dict[str, Any]) -> str:
 
 def _all_cvss_metrics(cve: dict[str, Any]) -> list[dict[str, Any]]:
     metrics = cve.get("metrics", {})
+    if not isinstance(metrics, dict):
+        return []
+
     selected: list[dict[str, Any]] = []
     for key in ("cvssMetricV40", "cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
         for metric in metrics.get(key, []) if isinstance(metrics.get(key), list) else []:
+            if not isinstance(metric, dict):
+                continue
             cvss_data = metric.get("cvssData", {})
+            if not isinstance(cvss_data, dict):
+                cvss_data = {}
             selected.append(
                 {
                     "version": cvss_data.get("version") or key,
@@ -369,7 +376,14 @@ def _best_cvss_metrics(cve: dict[str, Any]) -> dict[str, Any] | None:
 def _weaknesses(cve: dict[str, Any]) -> list[str]:
     values: list[str] = []
     for weakness in cve.get("weaknesses", []) if isinstance(cve.get("weaknesses"), list) else []:
-        for description in weakness.get("description", []):
+        if not isinstance(weakness, dict):
+            continue
+        descriptions = weakness.get("description", [])
+        if not isinstance(descriptions, list):
+            continue
+        for description in descriptions:
+            if not isinstance(description, dict):
+                continue
             value = description.get("value")
             if value and value not in values:
                 values.append(value)
@@ -378,7 +392,15 @@ def _weaknesses(cve: dict[str, Any]) -> list[str]:
 
 def _references(cve: dict[str, Any]) -> list[str]:
     refs: list[str] = []
-    for reference in cve.get("references", {}).get("referenceData", []):
+    references = cve.get("references", [])
+    if isinstance(references, dict):
+        references = references.get("referenceData", [])
+    if not isinstance(references, list):
+        return refs
+
+    for reference in references:
+        if not isinstance(reference, dict):
+            continue
         url = reference.get("url")
         if url and url not in refs:
             refs.append(url)
@@ -386,10 +408,16 @@ def _references(cve: dict[str, Any]) -> list[str]:
 
 
 def _english_value(items: list[dict[str, Any]]) -> str | None:
+    if not isinstance(items, list):
+        return None
     for item in items:
+        if not isinstance(item, dict):
+            continue
         if item.get("lang") == "en" and item.get("value"):
             return str(item["value"])
     for item in items:
+        if not isinstance(item, dict):
+            continue
         if item.get("value"):
             return str(item["value"])
     return None
