@@ -2653,3 +2653,474 @@ id
 Xampp Jabber ID String Medium XAMPP/Jabber messaging ID.
 Example: itype="xampp_jabber_
 id"
+
+
+Threat Model
+TheAnomali Threat Model is STIX (v1.2, v2.0, and v2.1) compatible and supports adding, managing,
+importing, and exporting contextual, relationship, and workflow information for these types of Threat
+Model entities: Actors, Attack Patterns, Campaigns, Courses of Action, Identities, Incidents,
+Infrastructure, Intrusion Sets, Malware, Signatures, Threat Bulletins, Tools, TTPs, and
+Vulnerabilities.
+Youcanalsocreate and associate threat bulletins in the Threat Model and associate them with all
+Threat Model entities. See "Managing Threat Model Associations " on page 173for more information.
+YoucanmanagetagsofThreatModelentities in bulk. See "Threat Model Entity Tags in Bulk" on
+page 182for moreinformation.
+Thefollowing Threat Model API resources are covered here:
+Threat Model Search
+Actors
+Attack Patterns
+Campaigns
+Incidents
+Malware
+Signatures
+Tipreport
+TTPs(Tactics, Techniques, and Procedures)
+Vulnerabilities
+Managing Threat Model Associations
+Threat Model Search
+Tosearch for Threat Model entities from ThreatStream.
+Request
+/api/v1/threat_model_search/
+HTTPMethod:GET
+Anomali ThreatStream API
+105
+116
+122
+132
+138
+143
+152
+157
+163
+168
+173
+Page105of262
+Searchforthreatmodel
+entities
+GET/api/v1/threat_model_search/
+Note: Whenthisrequestisusedforbasicsearchofthreatmodel
+entities,thesearchisperformedwithinallthreatmodeltypes
+exceptvulnerabilities.Tosearchforvulnerabilities,amodeltype
+mustbespecified.
+Forexample,
+/api/v1/threat_model_search/?model_
+type=vulnerability
+Searchforlocalthreat
+modelentitiesonly(for
+ThreatStreamOnPrem
+only)
+GET/api/v1/threat_model_search/?local_only=true
+Searchforremotethreat
+modelentitiesonly(for
+ThreatStreamOnPrem
+only)
+GET/api/v1/threat_model_search/?remote_api=true
+Onlyusethisattributewhensearchingremotethreatmodelentitieson
+ThreatStreamCloud.Setthisattributetotrueinthiscase.
+Donotsetthisattributetofalseforsearchinglocalthreatmodel
+entities.Doingsowillgenerateerrors.
+Forattributesthatcanbeusedforfiltering,seethetablebelow.
+Response
+Format:JSON
+Numberofrowsreturned(bydefault):20
+Attributes:Seethetablebelow
+Orderofattributes:Bydefault,attributesaresortedbythemodified_tsattribute,indescending
+order.
+Attributes
+Attribute Type
+Filter
+Operators Description
+alias string "exact",
+"startswith",
+"contains"
+Othernamesbywhichtheactorsareknown.
+circles string Notavailable
+forfiltering
+Trustedcircleswithwhichtheactorisshared.
+created_by string Notavailable
+forfiltering
+Emailaddressoftheuserwhocreatedathreat
+modelentity.
+ReferenceGuide
+ThreatModel
+AnomaliThreatStreamAPI Page106of262
+Attribute Type
+Filter
+Operators Description
+created_ts date "exact","lt",
+"lte","gte",
+"gt"
+Timestampofwhentheentitywascreatedon
+ThreatStream,inUTCformat.
+Dateisinthisformat:YYYYMMDDThhmmss
+whereTdenotesthestartofthevaluefortime.
+Forexample,2014-10-02T20:44:35.
+Note:Thisattributeisreturnedinthe
+responsetoaGETcallandissetby
+ThreatStream;itcannotbeconfigured.
+end_date date "exact","lt",
+"lte","gte",
+"gt"
+Timewhenacampaignwasknowntohave
+ended.
+Datemustbespecifiedinthisformat:
+YYYYMMDDThhmmssandinUTCformat.
+whereTdenotesthestartofthevaluefortime.
+Forexample,2014-10-02T20:44:35.
+feed_id string "exact" NumericIDofthethreatfeedthatprovidedthe
+threatmodelentity.
+full_count integer "exact" Setfull_count=1toretrievetheexacttotal
+countforhigh-volumesearches.Thissettingmay
+impactretrievalperformanceforlargeresultsets.
+SeeAPIMetadataformoreinformation.
+id string Notavailable
+forfiltering
+UniqueIDassignedtotheentity.
+is_email boolean "exact" Whetherthethreatbulletinwascreatedasa
+resultofanemail import.
+is_public boolean "exact" Whethertheentityispublicorprivate(including
+belongingtoatrustedcircle).
+False—iftheentityisprivateorbelongstoa
+TrustedCircle
+True—iftheentityispublic
+Default:False
+ReferenceGuide
+ThreatModel
+AnomaliThreatStreamAPI Page107of262
+Attribute Type
+Filter
+Operators Description
+local_only(for
+ThreatStream
+OnPremonly)
+boolean "exact" Whethertosearchforonlylocalentities
+on ThreatStreamOnPrem.
+True—searchforlocalentitiesonly
+See"remote_api(forThreatStreamOnPrem
+only)"onthenextpagetosearchforremote
+entitiesonly.
+locations listofdict "exact" Sameastarget_locations.See"target_locations"
+onpage 113.
+Inresponses,thelocationsfieldincludesIDs,
+names,andvaluesoftargetlocationsassociated
+withthethreatmodelentity.
+model_type string "exact" Typeofthethreatmodelentity:actor,attack
+pattern,campaign,incident,malware,signature,
+tipreport(ThreatBulletin),ttp,vulnerability.
+Note:Themodel_typeattributeisrequired
+forsearchingvulnerabilities.
+modified_ts date "exact","lt",
+"lte","gte",
+"gt"
+Timestampofwhentheentitywaslastupdated
+onThreatStream,inUTCformat.
+Dateisinthisformat:YYYYMMDDThhmmss
+whereTdenotesthestartofthevaluefortime.
+Forexample,2014-10-02T20:44:35.
+name string "exact",
+"startswith",
+"contains"
+Nameoftheentity.
+organization string Notavailable
+forfiltering
+Organizationthatownstheentity.
+organization_id string "exact" IDoftheorganizationthatownstheentity.
+owner_user string Notavailable
+forfiltering
+ThreatStreamuserthatcreatedtheentity.
+owner_user_id string "exact" IDoftheThreatStreamuserthatcreatedthe
+entity.
+publication_
+status
+string "exact" Entitiescanbeinnew,pending_review,review_
+requested,reviewed,publishedstatuses.
+ReferenceGuide
+ThreatModel
+AnomaliThreatStreamAPI Page108of262
+Attribute Type
+Filter
+Operators Description
+published_ts datetime "exact","lt",
+"lte","gte",
+"gt"
+Timestampofwhentheentitywaspublishedon
+ThreatStream,inUTCformat.
+Dateisinthisformat:YYYYMMDDThhmmss
+whereTdenotesthestartofthevaluefortime.
+Forexample,2014-10-02T20:44:35.
+remote_api(for
+ThreatStream
+OnPremonly)
+boolean "exact" Whethertosearchforonlyentitiesthatare
+remote(storedonCloud).
+Thisattributedoesnotneedtobesettosearch
+forlocalentities.Onlyusethisattributewhen
+searchingremoteentitiesfromThreatStream
+Cloud.Setthisattributetotrueinthiscase.
+Donotsetthisattributetofalseforretrieving
+localentities.Doingsowillgenerateerrors.
+See"local_only(forThreatStreamOnPremonly)"
+onthepreviouspageforsearchinglocalentities.
+resource_uri string Notavailable
+forfiltering
+URI fortheentity.
+search_filter integer "exact" ID ofthesavedsearchfilteryouwanttoexecute.
+Therearetwomethodsofretrievingsavedsearch
+filterIDs:
+l ThroughtheThreatStreamuserinterface.
+Visithttps://ui.threatstream.com/search/filter
+andrecordtheID valueintheIDcolumnfor
+thefilterofinterest.
+l ThroughtheAPI.See"ThreatModelSearch"
+onpage 105formoreinformation.
+Important:Whenusingthesearch_filter,
+itcannotbecombinedwithq(advanced
+search)orbasicsearchfilters.Although,
+paginationandsortingparameterssuchas
+ReferenceGuide
+ThreatModel
+AnomaliThreatStreamAPI Page109of262
+Attribute Type
+Filter
+Operators Description
+limitandsortarestillsupported.
+Note:ForThreatStreamOnPremusers
+only: theThreatModelSearchAPIdoesnot
+supportamergedviewoflocalandremote
+threatmodelswhenyouusethesearch_
+filterattributeinyourquery.
+l Ifthesearchfilterisstoredlocally(on
+ThreatStreamOnPrem),thefilteris
+appliedtothelocalthreatmodelsand,
+consequently,returnsmatchestolocal
+threatmodels.
+l Ifthesearchfilterisstoredremotely(on
+ThreatStreamCloud),itisappliedtothe
+remotethreatmodelsandreturns
+matchestoremotelystoredthreat
+models.However,thisattributemustbe
+accompaniedwithanotherattribute,
+remote_api,torunitremotelyfrom
+ThreatStreamOnPrem,asshownbelow:
+curl 'https://<OnPrem_IP_or_
+FQDN>/api/v2/threat_model_
+search/?search_filter=<filter_
+id>&remote_api=true'-H
+'Authorization: apikey
+<username>:<api_key>'
+Iftheremote_apiparameterisnotused
+forasearchfilterstoredremotely(on
+ThreatStreamCloud),thequerywillfail
+withanerror.
+signature$type string "exact" Typeofsignature.Possiblevaluesinclude:
+l Bro
+l Carbon+Black+Query
+l ClamAV
+l Custom
+ReferenceGuide
+ThreatModel
+AnomaliThreatStreamAPI Page110of262
+Attribute Type
+Filter
+Operators Description
+l CybOX
+l OpenIOC
+l RSA+NetWitness
+l Snort
+l Splunk+Query
+l Suricata
+l YARA
+Note:Youmustspecifymodel_
+type=signaturewhenusingsignature$type
+inaquery.
+source_created datetime "exact","lt",
+"lte","gte",
+"gt"
+Timestampofwhentheentitywascreatedbyits
+originalsource.
+source_
+locations
+listofdicts "exact" Sourcelocationassociatedwiththethreatmodel
+entity.
+Possiblevaluesincludelettercodesofregions,
+countries,andadministrativeareas(USStates
+andWashingtonDConly)asdefinedbySTIX 2.1.
+Forexample,eastern-africa,central-asia,
+europe,africa,NL,GB,US-FL,andUS-MO.
+Note:ThreatStreamretrievesThreatModel
+entitiesthatcomefromall locationsthatare
+partofthespecified
+region/country/administrativearea.For
+example,ifyouspecifysource_
+locations=europe,ThreatStreamwill
+retrieveThreatModelentitiesfromall
+EuropeancountriessuchasGermany,
+Poland,France,Belgium,andsoon.
+source_modified datetime "exact","lt",
+"lte","gte",
+"gt"
+Timestampofwhentheentitywaslastupdated
+byitsoriginalsource.
+ReferenceGuide
+ThreatModel
+AnomaliThreatStreamAPI Page111of262
+Attribute Type
+Filter
+Operators Description
+start_date date "exact","lt",
+"lte","gte",
+"gt"
+Timewhenacampaignwasknowntohave
+started.
+Datemustbespecifiedinthisformat:
+YYYYMMDDThhmmssandinUTCformat.
+whereTdenotesthestartofthevaluefortime.
+Forexample,2014-10-02T20:44:35.
+status string Notavailable
+forfiltering
+Statusofacampaign:ongoing,historic,future.
+subtype string Forhashobservables—thosewithtype=md5—
+subtypeprovidesadditionalmetadataonthetype
+ofhashassociatedwiththeobservable.
+Possiblevalues:MD5,SHA1,SHA256,SHA512.
+tags string Additionalcommentsandcontextassociatedwith
+theobservablewhenitwasimportedfromits
+originalthreatfeed.
+Note:TheAPI responsemayreturnseveral
+tags.*attributes(namely,tags.idandtags.name).
+ThoseattributesareforThreatStream'sinternal
+trackingandcanbeignored.
+target_industry string "exact" TargetindustriesassociatedwiththeThreat
+Modelentity.Possiblevaluesaredefinedbythe
+STIX 2.1IndustrySectorvocabulary.
+Forexample,chemical,financial-services,
+andgovernment-regional.
+ReferenceGuide
+ThreatModel
+AnomaliThreatStreamAPI Page112of262
+Attribute Type
+Filter
+Operators Description
+target_locations string "exact" Targetlocationsassociatedwiththethreatmodel
+entity.
+Possiblevaluesincludelettercodesofregions,
+countries,andadministrativeareas(USStates
+andWashingtonDConly)asdefinedbySTIX 2.1.
+Forexample,eastern-africa,central-asia,
+europe,africa,NL,GB,US-FL,andUS-MO.
+Notes:
+l ThreatStreamretrievesThreatModel
+entitiestargetingall locationsthatarepart
+ofthespecified
+region/country/administrativearea.For
+example,ifyouspecifytarget_
+locations=europe,ThreatStreamwill
+retrieveThreatModelentitiestargetingall
+EuropeancountriessuchasGermany,
+Poland,France,Belgium,andsoon.
+l Inresponses,detailsoftargetlocations
+areprovidedinthelocationsfield.See
+"locations"onpage 108.
+trusted_circle_
+ids
+string "exact" Usedforqueryingentitiesassociatedwith
+specifiedtrustedcircles.
+tlp string "exact" TLPsettingassociatedwiththeentity.
+ReferenceGuide
+ThreatModel
+AnomaliThreatStreamAPI Page113of262
+Attribute Type
+Filter
+Operators Description
+value string "exact",
+"startswith",
+"contains"
+ThreatModelkeywordsearch.Specifyingavalue
+yieldsthesameresultsasakeywordsearch
+throughtheThreatStreamuserinterface.The
+followingfieldsarequeried:
+Actors:Aliases,Description,Name,Tags
+AttackPatterns:Aliases,Description,Name,
+Tags
+Campaigns:Aliases,Description,Name,Tags
+CoursesofAction:Description,Name,Tags
+Incidents:Name,Description,Tags
+Infrastructure:Aliases,Description,Name,Tags
+Identities:Description,Name,Tags
+IntrusionSets:Aliases,Description,Name,
+Tags
+Malware:Aliases,Description,Name,Tags
+Signatures:Description,Name,Tags
+ThreatBulletins:Description,Name,Tags
+Tools:Aliases,Description,Name,Tags
+TTPs:Aliases,Description,Name,Tags
+Vulnerabilities:Aliases,Description,Name,
+Tags
+workgroups Notavailable
+forfiltering
+Notused.
+Examples
+AsIntelligenceAPIcallscanyieldlargenumbersofresults,thefollowingexamplesusethelimit
+attributetolimitthenumberofresultsdisplayedinanAPIcall.
+Bydefault,ifthelimitparameterisnotspecified,20recordsarefetchedatatime.However,when
+limit=0,amaximumof1000thetotalrecordsthatmeetthequeryarefetched.
+1. Toretrievethe100mostrecentlymodifiedThreatModelentitiesinThreatStream:
+curl 'https://api.threatstream.com/api/v1/threat_model_search/?limit=100'-H
+'Authorization: apikey <username>:<api_key>'
+ReferenceGuide
+ThreatModel
+AnomaliThreatStreamAPI Page114of262
+Reference Guide
+Threat Model
+2. Toretrieve the 10 most recently modified Threat Model entities from a feed whose ID is 72:
+curl 'https://api.threatstream.com/api/v1/threat_model_
+search/?limit=10&feed_id=72'-H 'Authorization: apikey <username>:<api_key>'
+3. Toretrieve the 20 (default) most recently modified Threat Model entities tagged with "malware"
+and "community-threat-briefing":
+curl 'https://api.threatstream.com/api/v1/threat_model_
+search/?tags.name=malware,community-threat-briefing'-H 'Authorization:
+apikey <username>:<api_key>'
+4. Toretrieve the 20 (default) most recently modified Threat Model entities that are shared with a
+trusted circle whose ID is 20:
+curl 'https://api.threatstream.com/api/v1/threat_model_search/?trusted_
+circle_ids=20'-H 'Authorization: apikey <username>:<api_key>'
+5. Toretrieve the 20 (default) most recently modified Threat Model entities that are assigned the
+TLPsetting red:
+curl 'https://api.threatstream.com/api/v1/threat_model_search/?tlp=red'-H
+'Authorization: apikey <username>:<api_key>'
+6. Toretrieve a list of actors (20 by default if the limit parameter is not specified):
+curl 'https://api.threatstream.com/api/v1/threat_model_search/?model_
+type=actor'-H 'Authorization: apikey <username>:<api_key>'
+7. Toretrieve the actor whose nameis "Fancy Bear":
+curl 'https://api.threatstream.com/api/v1/threat_model_search/?model_
+type=actor&name='Fancy Bear''-H 'Authorization: apikey <username>:<api_
+key>'
+8. Toretrieve the 20 (default) most recently modified campaigns in "new" publication status:
+curl 'https://api.threatstream.com/api/v1/threat_model_search/?model_
+type=campaign&publication_status=new'-H 'Authorization: apikey
+<username>:<api_key>'
+9. Toretrieve the 20 (default) most recently modified signatures of the Snort type:
+curl 'https://api.threatstream.com/api/v1/threat_model_search/?model_
+type=signature&signature$type=Snort'-H 'Authorization: apikey
+<username>:<api_key>'
+Anomali ThreatStream API
+Page115of262
+Reference Guide
+Threat Model
+10. Toretrieve the 20 (default) most recently modified actors and signatures of the signature type
+CybOX:
+curl 'https://api.threatstream.com/api/v1/threat_model_search/?model_
+type=signature,actor&signature$type=CybOX'-H 'Authorization: apikey
+<username>:<api_key>'
+11. Toretrieve threat models filtered by a specified saved search:
+curl 'https://api.threatstream.com/api/v1/threat_model_search/?search_
+filter=<filter_id>'-H 'Authorization: apikey <username>:<api_key>'
+12. (OnlyonThreatStream OnPrem)Toretrieve the 100 most recently modified Threat Model
+entities from ThreatStream Cloud: 
+curl 'https://<ThreatStream_OnPrem_IP_or_FQDN>/api/v1/threat_model_
+search/?limit=100&remote_api=true'-H 'Authorization: apikey
+<username>:<api_key>'
+13. (OnlyonThreatStream OnPrem)Toretrieve a list of actors (20 by default if the limit parameter is
+not specified) from ThreatStream Cloud:
+curl 'https://<ThreatStream_OnPrem_IP_or_FQDN>/api/v1/threat_model_
+search/?model_type=actor&remote_api=true'-H 'Authorization: apikey
