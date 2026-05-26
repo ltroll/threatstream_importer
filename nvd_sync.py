@@ -16,6 +16,7 @@ from urllib.request import Request, urlopen
 from kev_watcher import (
     DEFAULT_SEARCH_PATH,
     DEFAULT_TRUSTED_CIRCLE_ID,
+    DEFAULT_VULNERABILITY_TAG_PATH_TEMPLATE,
     DEFAULT_VULNERABILITY_PATH,
     _build_url,
     _tag_objects,
@@ -93,11 +94,13 @@ class ThreatStreamVulnerabilityClient:
         base_url: str = DEFAULT_BASE_URL,
         search_path: str = DEFAULT_SEARCH_PATH,
         vulnerability_path: str = DEFAULT_VULNERABILITY_PATH,
+        vulnerability_tag_path_template: str = DEFAULT_VULNERABILITY_TAG_PATH_TEMPLATE,
         timeout: int = 30,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.search_path = search_path
         self.vulnerability_path = vulnerability_path
+        self.vulnerability_tag_path_template = vulnerability_tag_path_template
         self.timeout = timeout
         self.headers = {
             "Authorization": f"apikey {username}:{api_key}",
@@ -131,6 +134,14 @@ class ThreatStreamVulnerabilityClient:
         if not vulnerability_id:
             raise ThreatStreamError("Matched vulnerability did not include id or resource_uri")
         return self._request("PATCH", urljoin(self.vulnerability_path, f"{vulnerability_id}/"), body=payload)
+
+    def add_tags_to_vulnerability(self, vulnerability: dict[str, Any], tags: list[dict[str, str]]) -> dict[str, Any]:
+        vulnerability_id = _threat_model_id(vulnerability)
+        if not vulnerability_id:
+            raise ThreatStreamError("Vulnerability did not include id or resource_uri for tagging")
+
+        path = self.vulnerability_tag_path_template.format(id=vulnerability_id)
+        return self._request("POST", path, body={"tags": tags})
 
     def _request(
         self,
@@ -191,6 +202,10 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
         base_url=os.environ.get("THREATSTREAM_BASE_URL") or DEFAULT_BASE_URL,
         search_path=os.environ.get("THREATSTREAM_THREAT_MODEL_SEARCH_PATH") or DEFAULT_SEARCH_PATH,
         vulnerability_path=os.environ.get("THREATSTREAM_VULNERABILITY_PATH") or DEFAULT_VULNERABILITY_PATH,
+        vulnerability_tag_path_template=(
+            os.environ.get("THREATSTREAM_VULNERABILITY_TAG_PATH_TEMPLATE")
+            or DEFAULT_VULNERABILITY_TAG_PATH_TEMPLATE
+        ),
     )
 
     results: list[dict[str, Any]] = []
@@ -200,15 +215,21 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
         if not cve_id:
             continue
 
-        payload = build_threatstream_payload(nvd_item, trusted_circle_id, tags)
+        payload = build_threatstream_payload(nvd_item, trusted_circle_id)
         matches = threatstream.search_vulnerability(cve_id, trusted_circle_id)
         if matches:
             response = threatstream.update_vulnerability(matches[0], payload)
+            tag_response = threatstream.add_tags_to_vulnerability(matches[0], tags)
             action = "updated_existing"
         else:
             response = threatstream.create_vulnerability(payload)
+            created_vulnerability = response if isinstance(response, dict) else {}
+            if not _threat_model_id(created_vulnerability):
+                followup_matches = threatstream.search_vulnerability(cve_id, trusted_circle_id)
+                created_vulnerability = followup_matches[0] if followup_matches else created_vulnerability
+            tag_response = threatstream.add_tags_to_vulnerability(created_vulnerability, tags)
             action = "created_vulnerability"
-        results.append({"cveID": cve_id, "action": action, "response": response})
+        results.append({"cveID": cve_id, "action": action, "response": response, "tag_response": tag_response})
 
     return {
         "window": {"start": _nvd_datetime(start), "end": _nvd_datetime(end)},
@@ -220,7 +241,6 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
 def build_threatstream_payload(
     nvd_item: dict[str, Any],
     trusted_circle_id: str,
-    tags: list[dict[str, str]],
 ) -> dict[str, Any]:
     cve = nvd_item.get("cve", {})
     cve_id = cve.get("id")
@@ -230,7 +250,6 @@ def build_threatstream_payload(
     return {
         "name": cve_id,
         "description": _threatstream_description(nvd_item),
-        "tags": tags,
         "trusted_circle_ids": [int(trusted_circle_id)],
     }
 
