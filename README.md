@@ -155,3 +155,49 @@ calling `submit_indicator`.
 - For email indicators, the payload uses the ThreatStream `email` field.
 - For URL indicators, the payload uses the ThreatStream `url` field.
 - Tags are private by default and are sent as ThreatStream tag objects, for example `{"name": "case-123", "tlp": "red"}`.
+
+## CISA KEV Watcher
+
+`kev_watcher.py` checks the CISA Known Exploited Vulnerabilities JSON catalog for newly added CVEs.
+For each new CVE, it searches ThreatStream Threat Model vulnerabilities in trusted circle `310`. If it
+finds a vulnerability named exactly like the CVE, it adds the private tag `cisa_kev`. If no matching
+vulnerability is found, it creates a placeholder vulnerability with that tag.
+
+Run one dry-run check against the current catalog:
+
+```bash
+python3 kev_watcher.py --once --dry-run --process-existing
+```
+
+Start the watcher loop. It checks every 10 minutes by default:
+
+```bash
+python3 kev_watcher.py
+```
+
+On the first real run, the script records the current KEV catalog as its baseline and does not process
+all existing KEVs. To process the full current catalog intentionally, use:
+
+```bash
+python3 kev_watcher.py --once --process-existing
+```
+
+Relevant `.env` settings:
+
+```bash
+KEV_URL=https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json
+KEV_WATCH_INTERVAL_SECONDS=600
+KEV_WATCHER_STATE_FILE=kev_watcher_state.json
+KEV_TRUSTED_CIRCLE_ID=310
+KEV_TAG_NAME=cisa_kev
+KEV_TAG_TLP=red
+THREATSTREAM_THREAT_MODEL_SEARCH_PATH=/api/v1/threat_model_search/
+THREATSTREAM_VULNERABILITY_PATH=/api/v1/vulnerability/
+```
+
+The watcher stores processed CVEs in `kev_watcher_state.json`, which is ignored by git.
+
+The updated API reference documents the Threat Model search endpoint used by the watcher:
+`/api/v1/threat_model_search/?model_type=vulnerability&name=<CVE>&trusted_circle_ids=310`.
+The write endpoints for tagging and placeholder vulnerability creation are tenant-configurable through
+the `.env` path settings above; run `--dry-run` first to confirm the CVEs that would be processed.

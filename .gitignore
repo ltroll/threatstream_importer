@@ -1,4 +1,5 @@
 .env
+kev_watcher_state.json
 __pycache__/
 *.py[cod]
 .DS_Store
