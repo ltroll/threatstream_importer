@@ -1,5 +1,7 @@
 .env
 kev_watcher_state.json
+kev_watcher.log
+nvd_sync.log
 __pycache__/
 *.py[cod]
 .DS_Store

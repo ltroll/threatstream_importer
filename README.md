@@ -225,3 +225,42 @@ For existing matches, the watcher uses the documented tag endpoint:
 `POST /api/v1/vulnerability/<id>/tag/` with `{"tags": [{"name": "cisa_kev", "tlp": "red"}]}`.
 The placeholder vulnerability creation path remains tenant-configurable through the `.env` path
 settings above; run `--dry-run` first to confirm the CVEs that would be processed.
+
+## NVD Vulnerability Sync
+
+`nvd_sync.py` queries the NVD CVE 2.0 API for CVEs modified in a recent window, searches
+ThreatStream for a vulnerability named exactly like each CVE, then creates or updates the
+ThreatStream vulnerability model. By default it looks back 10 minutes.
+
+Dry-run the last 10 minutes:
+
+```bash
+python3 nvd_sync.py --dry-run
+```
+
+Sync a specific UTC window:
+
+```bash
+python3 nvd_sync.py --start 2026-05-26T12:00:00Z --end 2026-05-26T12:10:00Z
+```
+
+Cron-friendly 10-minute entry:
+
+```cron
+*/10 * * * * cd /path/to/threatstream_importer && /usr/bin/python3 -B nvd_sync.py --env-file /path/to/threatstream_importer/.env >> /path/to/threatstream_importer/nvd_sync.log 2>&1
+```
+
+Relevant `.env` settings:
+
+```bash
+NVD_CVE_API_URL=https://services.nvd.nist.gov/rest/json/cves/2.0
+NVD_API_KEY=
+NVD_TRUSTED_CIRCLE_ID=310
+NVD_TAG_NAME=nvd_sync
+NVD_TAG_OVERRIDE=
+NVD_TAG_TLP=red
+```
+
+Set `NVD_TAG_OVERRIDE=company_nvd_sync,pir-004` to apply comma-separated org-specific tags.
+The sync writes the NVD description, CVSS scores, CWE IDs, published/modified dates, status, and
+reference links into the ThreatStream vulnerability description.
