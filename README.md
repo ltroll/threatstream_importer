@@ -255,11 +255,17 @@ Relevant `.env` settings:
 ```bash
 NVD_CVE_API_URL=https://services.nvd.nist.gov/rest/json/cves/2.0
 NVD_API_KEY=
-NVD_TRUSTED_CIRCLE_ID=310
+NVD_TRUSTED_CIRCLE_ID=
+NVD_ORGANIZATION_ID=
 NVD_TAG_NAME=nvd_sync
 NVD_TAG_OVERRIDE=
 NVD_TAG_TLP=red
 ```
+
+Set `NVD_ORGANIZATION_ID` to your ThreatStream organization ID so the sync only updates CVE
+models your org owns. If an exact CVE exists only as a shared/external model, the sync will not touch
+it and will create a new vulnerability model for your org-managed workflow instead. `NVD_TRUSTED_CIRCLE_ID`
+is optional for this script and is not set by default.
 
 Set `NVD_TAG_OVERRIDE=company_nvd_sync,pir-004` to apply comma-separated org-specific tags.
 The sync writes the NVD description, CVSS scores, CWE IDs, published/modified dates, status, and

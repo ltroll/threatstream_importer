@@ -15,7 +15,6 @@ from urllib.request import Request, urlopen
 
 from kev_watcher import (
     DEFAULT_SEARCH_PATH,
-    DEFAULT_TRUSTED_CIRCLE_ID,
     DEFAULT_VULNERABILITY_TAG_PATH_TEMPLATE,
     DEFAULT_VULNERABILITY_PATH,
     _build_url,
@@ -109,13 +108,22 @@ class ThreatStreamVulnerabilityClient:
             "User-Agent": "threatstream-nvd-sync/1.0",
         }
 
-    def search_vulnerability(self, cve_id: str, trusted_circle_id: str) -> list[dict[str, Any]]:
+    def search_vulnerability(
+        self,
+        cve_id: str,
+        trusted_circle_id: str | None = None,
+        organization_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         query = {
             "model_type": "vulnerability",
             "name": cve_id,
-            "trusted_circle_ids": trusted_circle_id,
             "limit": 20,
         }
+        if trusted_circle_id:
+            query["trusted_circle_ids"] = trusted_circle_id
+        if organization_id:
+            query["organization_id"] = organization_id
+
         response = self._request("GET", self.search_path, query=query)
         objects = response.get("objects", response if isinstance(response, list) else [])
         if not isinstance(objects, list):
@@ -179,10 +187,11 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
     )
     nvd_vulnerabilities = nvd_client.fetch_modified(start, end)
 
-    trusted_circle_id = args.trusted_circle_id or os.environ.get("NVD_TRUSTED_CIRCLE_ID") or DEFAULT_TRUSTED_CIRCLE_ID
+    trusted_circle_id = args.trusted_circle_id or os.environ.get("NVD_TRUSTED_CIRCLE_ID")
+    organization_id = args.organization_id or os.environ.get("NVD_ORGANIZATION_ID")
     tag_tlp = args.tag_tlp or os.environ.get("NVD_TAG_TLP") or DEFAULT_TAG_TLP
     tags = _tag_objects(_resolve_tag_names(args), tag_tlp)
-    planned = [_planned_item(item, trusted_circle_id, tags) for item in nvd_vulnerabilities]
+    planned = [_planned_item(item, trusted_circle_id, tags, organization_id) for item in nvd_vulnerabilities]
 
     if args.dry_run:
         return {
@@ -216,7 +225,7 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
             continue
 
         payload = build_threatstream_payload(nvd_item, trusted_circle_id)
-        matches = threatstream.search_vulnerability(cve_id, trusted_circle_id)
+        matches = threatstream.search_vulnerability(cve_id, trusted_circle_id, organization_id)
         if matches:
             response = threatstream.update_vulnerability(matches[0], payload)
             tag_response = threatstream.add_tags_to_vulnerability(matches[0], tags)
@@ -225,7 +234,7 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
             response = threatstream.create_vulnerability(payload)
             created_vulnerability = response if isinstance(response, dict) else {}
             if not _threat_model_id(created_vulnerability):
-                followup_matches = threatstream.search_vulnerability(cve_id, trusted_circle_id)
+                followup_matches = threatstream.search_vulnerability(cve_id, trusted_circle_id, organization_id)
                 created_vulnerability = followup_matches[0] if followup_matches else created_vulnerability
             tag_response = threatstream.add_tags_to_vulnerability(created_vulnerability, tags)
             action = "created_vulnerability"
@@ -240,18 +249,20 @@ def process_once(args: argparse.Namespace) -> dict[str, Any]:
 
 def build_threatstream_payload(
     nvd_item: dict[str, Any],
-    trusted_circle_id: str,
+    trusted_circle_id: str | None = None,
 ) -> dict[str, Any]:
     cve = nvd_item.get("cve", {})
     cve_id = cve.get("id")
     if not cve_id:
         raise NvdSyncError("NVD item did not include cve.id")
 
-    return {
+    payload: dict[str, Any] = {
         "name": cve_id,
         "description": _threatstream_description(nvd_item),
-        "trusted_circle_ids": [int(trusted_circle_id)],
     }
+    if trusted_circle_id:
+        payload["trusted_circle_ids"] = [int(trusted_circle_id)]
+    return payload
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -264,7 +275,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--minutes", type=int, default=DEFAULT_LOOKBACK_MINUTES, help="Look back this many minutes. Default: 10.")
     parser.add_argument("--start", default=None, help="UTC start datetime, for example 2026-05-26T12:00:00Z.")
     parser.add_argument("--end", default=None, help="UTC end datetime, for example 2026-05-26T12:10:00Z.")
-    parser.add_argument("--trusted-circle-id", default=None, help=f"Trusted circle ID. Default: {DEFAULT_TRUSTED_CIRCLE_ID}")
+    parser.add_argument(
+        "--trusted-circle-id",
+        default=None,
+        help="Optional trusted circle ID to filter/search/share with. Defaults to NVD_TRUSTED_CIRCLE_ID if set.",
+    )
+    parser.add_argument(
+        "--organization-id",
+        default=None,
+        help="Only update matching ThreatStream vulnerabilities owned by this organization ID. Defaults to NVD_ORGANIZATION_ID.",
+    )
     parser.add_argument(
         "--tag-name",
         default=None,
@@ -287,7 +307,12 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def _planned_item(nvd_item: dict[str, Any], trusted_circle_id: str, tags: list[dict[str, str]]) -> dict[str, Any]:
+def _planned_item(
+    nvd_item: dict[str, Any],
+    trusted_circle_id: str | None,
+    tags: list[dict[str, str]],
+    organization_id: str | None,
+) -> dict[str, Any]:
     cve = nvd_item.get("cve", {})
     cve_id = cve.get("id")
     metrics = _best_cvss_metrics(cve)
@@ -298,7 +323,8 @@ def _planned_item(nvd_item: dict[str, Any], trusted_circle_id: str, tags: list[d
         "search": {
             "model_type": "vulnerability",
             "name": cve_id,
-            "trusted_circle_ids": trusted_circle_id,
+            **({"trusted_circle_ids": trusted_circle_id} if trusted_circle_id else {}),
+            **({"organization_id": organization_id} if organization_id else {}),
         },
         "cvss": metrics,
         "tags": tags,
