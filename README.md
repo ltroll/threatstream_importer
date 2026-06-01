@@ -399,6 +399,12 @@ Limit to one Threat Model type:
 python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulnerability
 ```
 
+Search multiple Threat Model types:
+
+```bash
+python3 search_threat_models_by_tag.py --tag sample_impacted --model-type tipreport,vulnerability
+```
+
 Lookup exposure for matching CVE-named models:
 
 ```bash

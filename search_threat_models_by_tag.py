@@ -108,7 +108,7 @@ def search_threat_models_by_tag(
 def search_threat_models_by_tags(
     tags: str | list[str],
     *,
-    model_type: str | None = None,
+    model_type: str | list[str] | None = None,
     modified_minutes: int | None = None,
     limit: int = 100,
     env_file: str | None = None,
@@ -116,26 +116,42 @@ def search_threat_models_by_tags(
     """Search once per tag and merge duplicate threat models."""
 
     tag_names = _parse_tag_names(tags) if isinstance(tags, str) else tags
+    model_types = _parse_csv_values(model_type) if isinstance(model_type, str) else model_type
+    if not model_types:
+        model_types = [None]
     merged: dict[str, dict[str, Any]] = {}
     searches: list[dict[str, Any]] = []
 
     for tag in tag_names:
-        result = search_threat_models_by_tag(
-            tag,
-            model_type=model_type,
-            modified_minutes=modified_minutes,
-            limit=limit,
-            env_file=env_file,
-        )
-        searches.append({"tag": tag, "query": result["query"], "url": result["url"], "count": result["count"]})
-        for threat_model in result["objects"]:
-            key = _threat_model_key(threat_model)
-            if key not in merged:
-                copied = dict(threat_model)
-                copied["matched_search_tags"] = [tag]
-                merged[key] = copied
-            elif tag not in merged[key]["matched_search_tags"]:
-                merged[key]["matched_search_tags"].append(tag)
+        for current_model_type in model_types:
+            result = search_threat_models_by_tag(
+                tag,
+                model_type=current_model_type,
+                modified_minutes=modified_minutes,
+                limit=limit,
+                env_file=env_file,
+            )
+            searches.append(
+                {
+                    "tag": tag,
+                    "model_type": current_model_type,
+                    "query": result["query"],
+                    "url": result["url"],
+                    "count": result["count"],
+                }
+            )
+            for threat_model in result["objects"]:
+                key = _threat_model_key(threat_model)
+                if key not in merged:
+                    copied = dict(threat_model)
+                    copied["matched_search_tags"] = [tag]
+                    copied["matched_model_types"] = [current_model_type] if current_model_type else []
+                    merged[key] = copied
+                else:
+                    if tag not in merged[key]["matched_search_tags"]:
+                        merged[key]["matched_search_tags"].append(tag)
+                    if current_model_type and current_model_type not in merged[key]["matched_model_types"]:
+                        merged[key]["matched_model_types"].append(current_model_type)
 
     objects = list(merged.values())
     return {
@@ -201,7 +217,7 @@ def add_tags_to_threat_model(
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Search all ThreatStream threat models for a tag.")
     parser.add_argument("--tag", required=True, help="Tag name or comma-separated tag names to search for.")
-    parser.add_argument("--model-type", default=None, help="Optional Threat Model type, for example vulnerability, actor, malware, tipreport.")
+    parser.add_argument("--model-type", default=None, help="Optional Threat Model type or comma-separated types, for example vulnerability,tipreport.")
     parser.add_argument("--modified-minutes", type=int, default=None, help="Only search models modified within the last N minutes.")
     parser.add_argument("--limit", type=int, default=100, help="Maximum results to return. Default: 100.")
     parser.add_argument("--env-file", default=None, help="Path to .env file. Defaults to .env next to scripts.")
@@ -385,10 +401,16 @@ def _tags_for_exposure_count(
 
 
 def _parse_tag_names(tag_value: str) -> list[str]:
-    tags = [tag.strip() for tag in tag_value.split(",") if tag.strip()]
+    tags = _parse_csv_values(tag_value)
     if not tags:
         raise ValueError("Tag arguments must include at least one tag name")
     return tags
+
+
+def _parse_csv_values(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 def _threat_model_key(threat_model: dict[str, Any]) -> str:
