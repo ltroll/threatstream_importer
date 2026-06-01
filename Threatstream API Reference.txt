@@ -3394,3 +3394,174 @@ curl-X POST 'https://api.threatstream.com/api/v1/actor/bulk_tagging/'-d '
 'Authorization:apikey <username>:<apikey>'
 Anomali ThreatStream API
 Page183of262
+
+Vulnerabilities
+To create, update, or retrieve Vulnerabilities from the ThreatStream platform.
+
+Request
+/api/v1/vulnerability/
+
+HTTP Methods: GET, POST, PATCH
+
+Create a new Vulnerability	POST /api/v1/vulnerability/
+Update the specified Vulnerability	PATCH /api/v1/vulnerability/{id}/
+Get details of the specified Vulnerability	GET /api/v1/vulnerability/{id}/
+Get a list of Vulnerabilities	
+Anomali recommends to use the /api/v1/threat_model_search endpoint to retrieve a list of Vulnerabilities. See Threat Model Search for details.
+
+For example,
+
+GET /api/v1/threat_model_search/?model_type=vulnerability
+
+Get a list of Vulnerabilities associated with the specified observable value or observable ID	
+GET /api/v1/vulnerability/associated_with_intelligence/?value={value}
+
+GET /api/v1/vulnerability/associated_with_intelligence/?ids={comma_separated_id_list}
+
+For example,
+
+GET /api/v1/vulnerability/associated_with_intelligence/?value=google.com returns all Vulnerabilities associated with google.com.
+
+Get a list of the specified entity type (such as Threat Bulletin, Actor, Campaign, and so on) associated with the specified Vulnerability	
+GET /api/v1/vulnerability/{id}/<entity_type>/
+
+For example,
+
+GET /api/v1/vulnerability/234673/tipreport/ returns all Threat Bulletins associated with the specified Vulnerability.
+
+Get a list of observables associated with the specified Vulnerability	GET /api/v1/vulnerability/{id}/intelligence/
+Response
+Format: JSON
+
+Attributes: See the table below
+
+Notes:
+Attributes with "related" data type return 0 to N number of values. For example, if a threat model entity belongs to more than one trusted circle, both will be returned.
+For information on limiting results and returning large datasets while mitigating performance impacts, see Limiting Results.
+
+Attributes
+Attribute	Type	Description
+circles	related (see item 1 in the Notes above)	All Trusted Circles to which the Vulnerability belongs.
+created_ts	
+datetime
+
+Time stamp of when the vulnerability was created on ThreatStream, in UTC format.
+
+Date is in this format: YYYYMMDDThhmmss
+
+where T denotes the start of the value for time.
+
+For example, 2014-10-02T20:44:35.
+
+Note: This attribute is returned in the response to a GET call and is set by ThreatStream; it cannot be configured.
+description	string	Free-form text associated with the Vulnerability (as specified in the Description field in the UI).
+is_public	boolean	
+Whether the Vulnerability is public or private (including belonging to a trusted circle).
+
+False—if the Vulnerability is private or belongs to a Trusted Circle
+
+True—if the Vulnerability is public
+
+Default: False
+
+is_system	boolean	
+Whether the Vulnerability was imported by ThreatStream.
+
+True—if the Vulnerability was imported by ThreatStream
+
+False—if the Vulnerability was added by a ThreatStream user
+
+limit	numeric	
+The limit variable controls the number of results returned every time an API call is made; the total number of results may be much larger than returned in one API call.
+
+If limit is not specified, 20 results are returned with each API call. Specifying limit=0 will return up to a maximum of 1000 results (if available).
+
+modified_ts	datetime	
+Time stamp of when the Vulnerability was last updated on ThreatStream, in UTC format.
+
+Date is in this format: YYYYMMDDThhmmss
+
+where T denotes the start of the value for time.
+
+For example, 2014-10-02T20:44:35.
+
+Note: This attribute is returned in the response to a GET call and is set by ThreatStream; it cannot be configured.
+name	string	
+Name of the Vulnerability.
+
+Vulnerability name is associated with your organization. Therefore, the name must be unique within your organization. However, two Vulnerabilities with the same name can exist on ThreatStream as long as they belong to different organizations.
+
+The name can contain up to 255 characters.
+
+
+Note: This is a required parameter.
+publication_status	string	
+A Vulnerability can be in new, pending_review, review_requested, reviewed, published statuses.
+
+Note: A Vulnerability must be in published status for it to be visible to other users outside your organization.
+remote_api (for ThreatStream OnPrem only)	boolean	
+Whether the entity is remote (stored on Cloud).
+
+Value returned for this attribute is true when the entity is remote.
+
+skip_associations
+
+(On ThreatStream OnPrem only)
+
+boolean	
+By default, up to 1000 threat model and observable associations are returned with GET requests for details of a threat model entity on ThreatStream OnPrem. When a threat model entity has a large number of associations, association retrieval can take a long time and impact performance. Therefore, Anomali recommends setting the skip_associations parameter to true. This parameter is only applicable to ThreatStream OnPrem.
+
+For example,
+
+GET /api/v1/vulnerability/{id}/?skip_associations=true
+
+skip_intelligence
+
+(On ThreatStream OnPrem only)
+
+boolean	
+By default, up to 1000 threat model and observable associations are returned with GET requests for details of a threat model entity on ThreatStream OnPrem. When a threat model entity has a large number of associations, association retrieval can take a long time and impact performance. Therefore, Anomali recommends setting the skip_intelligence parameter to true. This parameter is only applicable to ThreatStream OnPrem.
+
+For example,
+
+GET /api/v1/vulnerability/{id}/?skip_intelligence=true
+
+source	string	Where the vulnerability was imported from.
+source_created	datetime	Time stamp of when the Vulnerability was created by its original source.
+source_modified	datetime	Time stamp of when the Vulnerability was last updated by its original source.
+tags	list	
+Tags assigned to the Vulnerability.
+
+A tag is a meaningful name or any other string value assigned to identify the information.
+
+For example, spear phishing,exploitation.
+
+tlp	string	
+Traffic Light Protocol designation for the Vulnerability—red, amber, amber+strict, green, clear.
+
+Note: The value is case-sensitive and must be specified in lower case.
+Examples
+To create a private Vulnerability:
+
+Copy
+curl --request POST --data '{"name": "dummy test vulnerability", "tlp": "red", "tags": ["big vulnerability", "dummy tag"], "publication_status": "published", "definition": "the definition of this vulnerability"}'  'https://api.threatstream.com/api/v1/vulnerability/' -H 'Content-Type:application/json' -H 'Authorization: apikey <username>:<api_key>'
+To update the existing Vulnerability whose ID is 15:
+
+Copy
+curl --request PATCH --data '{"name": "another dummy test vulnerability", "tags": ["December"]}' 'https://api.threatstream.com/api/v1/vulnerability/15/' -H 'Authorization: apikey <username>:<api_key>' -H 'Content-Type:application/json'
+To get details of the existing Vulnerability whose ID is 15:
+
+Copy
+curl 'https://api.threatstream.com/api/v1/vulnerability/15/' -H 'Authorization: apikey <username>:<api_key>'
+To get the first 10 Vulnerabilities from ThreatStream:
+
+Copy
+curl 'https://api.threatstream.com/api/v1/vulnerability/?limit=10' -H 'Authorization: apikey <username>:<api_key>'
+(Only on ThreatStream OnPrem) To get details of the remote Vulnerability whose ID is 16:
+
+Copy
+curl 'https://<ThreatStream_OnPrem_IP_or_FQDN>/api/v1/vulnerability/16/?remote_api=true' -H 'Authorization: apikey <username>:<api_key>'
+(Only on ThreatStream OnPrem) To skip associations when retrieving details of the local Vulnerability with ID 12345:
+
+Copy
+curl 'https://<ThreatStream_OnPrem_IP_or_FQDN>/api/v1/vulnerability/12345/?skip_associations=true' -H 'Authorization: apikey <username>:<api_key>'
