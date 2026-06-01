@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -30,6 +31,7 @@ def search_threat_models_by_tag(
     tag: str,
     *,
     model_type: str | None = None,
+    modified_minutes: int | None = None,
     username: str | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
@@ -53,6 +55,8 @@ def search_threat_models_by_tag(
     }
     if model_type:
         query["model_type"] = model_type
+    if modified_minutes is not None:
+        query["modified_ts__gte"] = _threatstream_datetime(datetime.now(timezone.utc) - timedelta(minutes=modified_minutes))
     url = _build_url(resolved_base_url, resolved_search_path, query)
     request = Request(
         url,
@@ -141,6 +145,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Search all ThreatStream threat models for a tag.")
     parser.add_argument("--tag", required=True, help="Tag name to search for.")
     parser.add_argument("--model-type", default=None, help="Optional Threat Model type, for example vulnerability, actor, malware, tipreport.")
+    parser.add_argument("--modified-minutes", type=int, default=None, help="Only search models modified within the last N minutes.")
     parser.add_argument("--limit", type=int, default=100, help="Maximum results to return. Default: 100.")
     parser.add_argument("--env-file", default=None, help="Path to .env file. Defaults to .env next to scripts.")
     parser.add_argument(
@@ -177,6 +182,7 @@ def main(argv: list[str] | None = None) -> int:
         result = search_threat_models_by_tag(
             args.tag,
             model_type=args.model_type,
+            modified_minutes=args.modified_minutes,
             limit=args.limit,
             env_file=args.env_file,
         )
@@ -310,6 +316,10 @@ def _parse_tag_names(tag_value: str) -> list[str]:
     if not tags:
         raise ValueError("Tag arguments must include at least one tag name")
     return tags
+
+
+def _threatstream_datetime(value: datetime) -> str:
+    return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 if __name__ == "__main__":

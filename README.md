@@ -399,6 +399,12 @@ Lookup exposure for matching CVE-named models:
 python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulnerability --lookup-exposure
 ```
 
+Only search models modified in the last 10 minutes, useful for cron:
+
+```bash
+python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulnerability --modified-minutes 10
+```
+
 Tag exposed devices when exposure lookup finds impacted assets:
 
 ```bash
