@@ -313,3 +313,46 @@ THREATSTREAM_VULN_TRANSFORM_ID=4425
 The script uses `THREATSTREAM_USERNAME` and `THREATSTREAM_API_KEY` by default. If this transform
 endpoint only accepts UI-backed auth in your tenant, set `THREATSTREAM_SESSION_COOKIE` and
 `THREATSTREAM_CSRF_TOKEN` in `.env` instead.
+
+## Impact Assessment
+
+`impact_assessment.py` searches vulnerability threat models whose tags contain a marker tag, runs
+the vulnerability-management plugin for each CVE, and reports impacted asset counts plus impacted
+asset domains.
+
+Run without writing tags:
+
+```bash
+python3 impact_assessment.py
+```
+
+Apply impact result tags back to each threat model:
+
+```bash
+python3 impact_assessment.py --apply-tags
+```
+
+Example output fields:
+
+```json
+{
+  "cveID": "CVE-2025-14847",
+  "impacted": 2,
+  "impacted_domain": "domain.com"
+}
+```
+
+Relevant `.env` settings:
+
+```bash
+IMPACT_MARKER_TAG=sample_impacted
+IMPACT_ORGANIZATION_ID=
+IMPACTED_TAG_PREFIX=impacted
+IMPACTED_DOMAIN_TAG_PREFIX=impacted_domain
+IMPACT_TAG_SEPARATOR=:
+IMPACT_TAG_TLP=red
+```
+
+With the defaults, applied tags look like `impacted:2` and `impacted_domain:domain.com`. To make
+them org-unique, set values such as `IMPACTED_TAG_PREFIX=mycompany_impacted` and
+`IMPACTED_DOMAIN_TAG_PREFIX=mycompany_impacted_domain`.
