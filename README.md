@@ -346,6 +346,7 @@ Relevant `.env` settings:
 
 ```bash
 IMPACT_MARKER_TAG=sample_impacted
+IMPACT_TAG_SEARCH_MODE=exact
 IMPACT_ORGANIZATION_ID=
 IMPACTED_TAG_PREFIX=impacted
 IMPACTED_DOMAIN_TAG_PREFIX=impacted_domain
@@ -356,3 +357,8 @@ IMPACT_TAG_TLP=red
 With the defaults, applied tags look like `impacted:2` and `impacted_domain:domain.com`. To make
 them org-unique, set values such as `IMPACTED_TAG_PREFIX=mycompany_impacted` and
 `IMPACTED_DOMAIN_TAG_PREFIX=mycompany_impacted_domain`.
+
+By default, the script uses ThreatStream's documented exact tag filter: `tags.name=sample_impacted`.
+If you need substring matching, run with `--tag-search-mode contains` or set
+`IMPACT_TAG_SEARCH_MODE=contains`; that uses ThreatStream keyword search and then filters returned
+models locally by tag-name substring.

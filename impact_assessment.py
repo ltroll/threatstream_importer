@@ -29,6 +29,7 @@ DEFAULT_MARKER_TAG = "sample_impacted"
 DEFAULT_IMPACTED_TAG_PREFIX = "impacted"
 DEFAULT_IMPACTED_DOMAIN_TAG_PREFIX = "impacted_domain"
 DEFAULT_TAG_SEPARATOR = ":"
+DEFAULT_TAG_SEARCH_MODE = "exact"
 
 
 class ImpactAssessmentError(RuntimeError):
@@ -63,12 +64,19 @@ class ThreatModelClient:
         *,
         organization_id: str | None = None,
         limit: int = 0,
+        tag_search_mode: str = DEFAULT_TAG_SEARCH_MODE,
     ) -> list[dict[str, Any]]:
         query: dict[str, Any] = {
             "model_type": "vulnerability",
-            "value": marker_tag,
             "limit": limit,
         }
+        if tag_search_mode == "exact":
+            query["tags.name"] = marker_tag
+        elif tag_search_mode == "contains":
+            query["value"] = marker_tag
+        else:
+            raise ValueError("--tag-search-mode must be exact or contains")
+
         if organization_id:
             query["organization_id"] = organization_id
 
@@ -81,7 +89,7 @@ class ThreatModelClient:
             threat_model
             for threat_model in objects
             if CVE_PATTERN.match(str(threat_model.get("name", "")))
-            and _has_tag_containing(threat_model, marker_tag)
+            and _tag_matches(threat_model, marker_tag, tag_search_mode)
         ]
 
     def add_tags_to_vulnerability(self, vulnerability: dict[str, Any], tags: list[dict[str, str]]) -> dict[str, Any]:
@@ -119,6 +127,7 @@ class ThreatModelClient:
 def assess_impacted_models(args: argparse.Namespace) -> dict[str, Any]:
     load_dotenv(args.env_file)
     marker_tag = args.marker_tag or os.environ.get("IMPACT_MARKER_TAG") or DEFAULT_MARKER_TAG
+    tag_search_mode = args.tag_search_mode or os.environ.get("IMPACT_TAG_SEARCH_MODE") or DEFAULT_TAG_SEARCH_MODE
     organization_id = args.organization_id or os.environ.get("IMPACT_ORGANIZATION_ID") or os.environ.get("NVD_ORGANIZATION_ID")
 
     username = os.environ.get("THREATSTREAM_USERNAME")
@@ -140,6 +149,7 @@ def assess_impacted_models(args: argparse.Namespace) -> dict[str, Any]:
         marker_tag,
         organization_id=organization_id,
         limit=args.limit,
+        tag_search_mode=tag_search_mode,
     )
 
     results: list[dict[str, Any]] = []
@@ -166,6 +176,7 @@ def assess_impacted_models(args: argparse.Namespace) -> dict[str, Any]:
 
     return {
         "marker_tag": marker_tag,
+        "tag_search_mode": tag_search_mode,
         "organization_id": organization_id,
         "apply_tags": args.apply_tags,
         "count": len(results),
@@ -224,6 +235,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--env-file", default=None, help="Path to .env file. Defaults to .env next to scripts.")
     parser.add_argument("--marker-tag", default=None, help=f"Tag substring used to select models. Default: {DEFAULT_MARKER_TAG}")
+    parser.add_argument(
+        "--tag-search-mode",
+        choices=["exact", "contains"],
+        default=None,
+        help="Use exact tags.name filtering or keyword contains fallback. Default: exact.",
+    )
     parser.add_argument("--organization-id", default=None, help="Optional org ID filter for ThreatStream threat model search.")
     parser.add_argument("--limit", type=int, default=0, help="ThreatStream search limit. Default: 0, API max page.")
     parser.add_argument("--apply-tags", action="store_true", help="Apply impact result tags back to each threat model.")
@@ -250,9 +267,12 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def _has_tag_containing(threat_model: dict[str, Any], marker_tag: str) -> bool:
+def _tag_matches(threat_model: dict[str, Any], marker_tag: str, mode: str) -> bool:
     marker = marker_tag.lower()
-    return any(marker in tag.lower() for tag in _tag_names(threat_model))
+    tag_names = [tag.lower() for tag in _tag_names(threat_model)]
+    if mode == "exact":
+        return marker in tag_names
+    return any(marker in tag for tag in tag_names)
 
 
 def _tag_names(threat_model: dict[str, Any]) -> list[str]:
