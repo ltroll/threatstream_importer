@@ -387,6 +387,12 @@ matching model list.
 python3 search_threat_models_by_tag.py --tag sample_impacted
 ```
 
+Limit to one Threat Model type:
+
+```bash
+python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulnerability
+```
+
 Print the raw ThreatStream response:
 
 ```bash

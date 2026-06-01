@@ -23,6 +23,7 @@ class ThreatModelSearchError(RuntimeError):
 def search_threat_models_by_tag(
     tag: str,
     *,
+    model_type: str | None = None,
     username: str | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
@@ -44,6 +45,8 @@ def search_threat_models_by_tag(
         "tags.name": tag,
         "limit": limit,
     }
+    if model_type:
+        query["model_type"] = model_type
     url = _build_url(resolved_base_url, resolved_search_path, query)
     request = Request(
         url,
@@ -81,6 +84,7 @@ def search_threat_models_by_tag(
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Search all ThreatStream threat models for a tag.")
     parser.add_argument("--tag", required=True, help="Tag name to search for.")
+    parser.add_argument("--model-type", default=None, help="Optional Threat Model type, for example vulnerability, actor, malware, tipreport.")
     parser.add_argument("--limit", type=int, default=100, help="Maximum results to return. Default: 100.")
     parser.add_argument("--env-file", default=None, help="Path to .env file. Defaults to .env next to scripts.")
     parser.add_argument("--raw", action="store_true", help="Print raw ThreatStream response.")
@@ -90,7 +94,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     try:
-        result = search_threat_models_by_tag(args.tag, limit=args.limit, env_file=args.env_file)
+        result = search_threat_models_by_tag(
+            args.tag,
+            model_type=args.model_type,
+            limit=args.limit,
+            env_file=args.env_file,
+        )
     except (ThreatStreamError, ThreatModelSearchError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
