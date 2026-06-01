@@ -153,6 +153,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="After exposure lookup, tag models with exposed-devices:<count> when count is greater than zero.",
     )
+    parser.add_argument("--tag-found", default=None, help="Comma-separated tags to add when exposure count is greater than zero.")
+    parser.add_argument("--tag-missed", default=None, help="Comma-separated tags to add when exposure count is zero.")
+    parser.add_argument("--tag-all", default=None, help="Comma-separated tags to add to every returned model.")
     parser.add_argument(
         "--results-raw",
         "--raw",
@@ -172,11 +175,15 @@ def main(argv: list[str] | None = None) -> int:
             limit=args.limit,
             env_file=args.env_file,
         )
-        if args.lookup_exposure or args.tag_exposed:
+        if args.tag_all:
+            add_static_tags(result["objects"], args.tag_all)
+        if args.lookup_exposure or args.tag_exposed or args.tag_found or args.tag_missed:
             add_exposure_lookups(
                 result["objects"],
                 env_file=args.env_file,
                 tag_exposed=args.tag_exposed,
+                tag_found=args.tag_found,
+                tag_missed=args.tag_missed,
             )
     except (ThreatStreamError, ThreatModelSearchError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -194,6 +201,8 @@ def add_exposure_lookups(
     *,
     env_file: str | None = None,
     tag_exposed: bool = False,
+    tag_found: str | None = None,
+    tag_missed: str | None = None,
 ) -> None:
     tag_prefix = os.environ.get("EXPOSED_DEVICES_TAG_PREFIX") or DEFAULT_EXPOSED_TAG_PREFIX
     tag_tlp = os.environ.get("EXPOSED_DEVICES_TAG_TLP") or DEFAULT_TAG_TLP
@@ -217,6 +226,16 @@ def add_exposure_lookups(
         if tag_exposed and asset_count > 0:
             tags = _tag_objects([f"{tag_prefix}:{asset_count}"], tag_tlp)
             threat_model["exposure_lookup"]["tag_response"] = add_tags_to_threat_model(threat_model, tags)
+        static_result_tags = _tags_for_exposure_count(asset_count, tag_found, tag_missed, tag_tlp)
+        if static_result_tags:
+            threat_model["exposure_lookup"]["static_tag_response"] = add_tags_to_threat_model(threat_model, static_result_tags)
+
+
+def add_static_tags(threat_models: list[dict[str, Any]], tag_value: str) -> None:
+    tag_tlp = os.environ.get("EXPOSED_DEVICES_TAG_TLP") or DEFAULT_TAG_TLP
+    tags = _tag_objects(_parse_tag_names(tag_value), tag_tlp)
+    for threat_model in threat_models:
+        threat_model["tag_all_response"] = add_tags_to_threat_model(threat_model, tags)
 
 
 def _cve_from_name(name: str) -> str | None:
@@ -238,6 +257,26 @@ def _asset_count(plugin_summary: dict[str, Any]) -> int:
         if isinstance(assets, list):
             count = max(count, len(assets))
     return count
+
+
+def _tags_for_exposure_count(
+    asset_count: int,
+    tag_found: str | None,
+    tag_missed: str | None,
+    tag_tlp: str,
+) -> list[dict[str, str]]:
+    if asset_count > 0 and tag_found:
+        return _tag_objects(_parse_tag_names(tag_found), tag_tlp)
+    if asset_count == 0 and tag_missed:
+        return _tag_objects(_parse_tag_names(tag_missed), tag_tlp)
+    return []
+
+
+def _parse_tag_names(tag_value: str) -> list[str]:
+    tags = [tag.strip() for tag in tag_value.split(",") if tag.strip()]
+    if not tags:
+        raise ValueError("Tag arguments must include at least one tag name")
+    return tags
 
 
 if __name__ == "__main__":
