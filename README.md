@@ -423,6 +423,8 @@ python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulner
 
 With the default prefix, two exposed devices adds `exposed-devices:2`. No tag is added when the
 exposed device count is zero. Override the prefix with `EXPOSED_DEVICES_TAG_PREFIX`.
+When tagging returned models, the script uses the returned model type to choose the ThreatStream tag
+endpoint, such as `/api/v1/vulnerability/<id>/tag/` or `/api/v1/tipreport/<id>/tag/`.
 
 Apply fixed result tags:
 

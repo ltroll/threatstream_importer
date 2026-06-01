@@ -14,13 +14,27 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from kev_watcher import DEFAULT_SEARCH_PATH, DEFAULT_TAG_TLP, DEFAULT_VULNERABILITY_TAG_PATH_TEMPLATE, _build_url, _tag_objects, _threat_model_id
+from kev_watcher import DEFAULT_SEARCH_PATH, DEFAULT_TAG_TLP, _build_url, _tag_objects, _threat_model_id
 from threatstream_submit import DEFAULT_BASE_URL, ThreatStreamError, load_dotenv
 from vuln_plugin_query import CVE_PATTERN, TransformError, query_vulnerability_plugin
 
 
 CVE_IN_TEXT_PATTERN = re.compile(r"CVE-\d{4}-\d{4,19}", re.IGNORECASE)
 DEFAULT_EXPOSED_TAG_PREFIX = "exposed-devices"
+DEFAULT_THREAT_MODEL_TAG_PATH_TEMPLATE = "/api/v1/{entity_type}/{id}/tag/"
+MODEL_TYPE_TO_TAG_ENTITY = {
+    "actor": "actor",
+    "attack pattern": "attackpattern",
+    "attackpattern": "attackpattern",
+    "campaign": "campaign",
+    "incident": "incident",
+    "malware": "malware",
+    "signature": "signature",
+    "threat bulletin": "tipreport",
+    "tipreport": "tipreport",
+    "ttp": "ttp",
+    "vulnerability": "vulnerability",
+}
 
 
 class ThreatModelSearchError(RuntimeError):
@@ -148,14 +162,17 @@ def add_tags_to_threat_model(
     threat_model_id = _threat_model_id(threat_model)
     if not threat_model_id:
         raise ThreatModelSearchError("Threat model did not include id or resource_uri for tagging")
+    entity_type = _tag_entity_type(threat_model)
+    if not entity_type:
+        raise ThreatModelSearchError("Threat model did not include model_type or resource_uri for tagging")
 
     resolved_base_url = (base_url or os.environ.get("THREATSTREAM_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
     resolved_template = (
         tag_path_template
-        or os.environ.get("THREATSTREAM_VULNERABILITY_TAG_PATH_TEMPLATE")
-        or DEFAULT_VULNERABILITY_TAG_PATH_TEMPLATE
+        or os.environ.get("THREATSTREAM_THREAT_MODEL_TAG_PATH_TEMPLATE")
+        or DEFAULT_THREAT_MODEL_TAG_PATH_TEMPLATE
     )
-    url = _build_url(resolved_base_url, resolved_template.format(id=threat_model_id))
+    url = _build_url(resolved_base_url, resolved_template.format(entity_type=entity_type, id=threat_model_id))
     request = Request(
         url,
         data=json.dumps({"tags": tags}).encode("utf-8"),
@@ -379,6 +396,19 @@ def _threat_model_key(threat_model: dict[str, Any]) -> str:
     if threat_model_id:
         return f"id:{threat_model_id}"
     return f"name:{threat_model.get('model_type', '')}:{threat_model.get('name', '')}"
+
+
+def _tag_entity_type(threat_model: dict[str, Any]) -> str | None:
+    model_type = str(threat_model.get("model_type", "")).strip().lower()
+    if model_type in MODEL_TYPE_TO_TAG_ENTITY:
+        return MODEL_TYPE_TO_TAG_ENTITY[model_type]
+
+    resource_uri = threat_model.get("resource_uri")
+    if isinstance(resource_uri, str):
+        parts = [part for part in resource_uri.strip("/").split("/") if part]
+        if len(parts) >= 3 and parts[-1].isdigit():
+            return parts[-2]
+    return None
 
 
 def _threatstream_datetime(value: datetime) -> str:
