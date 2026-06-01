@@ -16,6 +16,7 @@ from urllib.request import Request, urlopen
 from kev_watcher import (
     DEFAULT_SEARCH_PATH,
     DEFAULT_TAG_TLP,
+    DEFAULT_VULNERABILITY_PATH,
     DEFAULT_VULNERABILITY_TAG_PATH_TEMPLATE,
     _build_url,
     _tag_objects,
@@ -30,6 +31,7 @@ DEFAULT_IMPACTED_TAG_PREFIX = "impacted"
 DEFAULT_IMPACTED_DOMAIN_TAG_PREFIX = "impacted_domain"
 DEFAULT_TAG_SEPARATOR = ":"
 DEFAULT_TAG_SEARCH_MODE = "exact"
+DEFAULT_SEARCH_ENDPOINT = "vulnerability"
 
 
 class ImpactAssessmentError(RuntimeError):
@@ -44,11 +46,13 @@ class ThreatModelClient:
         api_key: str,
         base_url: str = DEFAULT_BASE_URL,
         search_path: str = DEFAULT_SEARCH_PATH,
+        vulnerability_path: str = DEFAULT_VULNERABILITY_PATH,
         vulnerability_tag_path_template: str = DEFAULT_VULNERABILITY_TAG_PATH_TEMPLATE,
         timeout: int = 30,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.search_path = search_path
+        self.vulnerability_path = vulnerability_path
         self.vulnerability_tag_path_template = vulnerability_tag_path_template
         self.timeout = timeout
         self.headers = {
@@ -65,7 +69,18 @@ class ThreatModelClient:
         organization_id: str | None = None,
         limit: int = 0,
         tag_search_mode: str = DEFAULT_TAG_SEARCH_MODE,
+        search_endpoint: str = DEFAULT_SEARCH_ENDPOINT,
     ) -> list[dict[str, Any]]:
+        if search_endpoint == "vulnerability":
+            return self._search_vulnerability_endpoint(
+                marker_tag,
+                organization_id=organization_id,
+                limit=limit,
+                tag_search_mode=tag_search_mode,
+            )
+        if search_endpoint != "threat_model_search":
+            raise ValueError("--search-endpoint must be vulnerability or threat_model_search")
+
         query: dict[str, Any] = {
             "model_type": "vulnerability",
             "limit": limit,
@@ -84,6 +99,30 @@ class ThreatModelClient:
         objects = response.get("objects", response if isinstance(response, list) else [])
         if not isinstance(objects, list):
             raise ThreatStreamError("ThreatStream search response did not contain an objects list")
+
+        return [
+            threat_model
+            for threat_model in objects
+            if CVE_PATTERN.match(str(threat_model.get("name", "")))
+            and _tag_matches(threat_model, marker_tag, tag_search_mode)
+        ]
+
+    def _search_vulnerability_endpoint(
+        self,
+        marker_tag: str,
+        *,
+        organization_id: str | None,
+        limit: int,
+        tag_search_mode: str,
+    ) -> list[dict[str, Any]]:
+        query: dict[str, Any] = {"limit": limit}
+        if organization_id:
+            query["organization_id"] = organization_id
+
+        response = self._request("GET", self.vulnerability_path, query=query)
+        objects = response.get("objects", response if isinstance(response, list) else [])
+        if not isinstance(objects, list):
+            raise ThreatStreamError("ThreatStream vulnerability response did not contain an objects list")
 
         return [
             threat_model
@@ -128,6 +167,7 @@ def assess_impacted_models(args: argparse.Namespace) -> dict[str, Any]:
     load_dotenv(args.env_file)
     marker_tag = args.marker_tag or os.environ.get("IMPACT_MARKER_TAG") or DEFAULT_MARKER_TAG
     tag_search_mode = args.tag_search_mode or os.environ.get("IMPACT_TAG_SEARCH_MODE") or DEFAULT_TAG_SEARCH_MODE
+    search_endpoint = args.search_endpoint or os.environ.get("IMPACT_SEARCH_ENDPOINT") or DEFAULT_SEARCH_ENDPOINT
     organization_id = args.organization_id or os.environ.get("IMPACT_ORGANIZATION_ID") or os.environ.get("NVD_ORGANIZATION_ID")
 
     username = os.environ.get("THREATSTREAM_USERNAME")
@@ -140,6 +180,7 @@ def assess_impacted_models(args: argparse.Namespace) -> dict[str, Any]:
         api_key=api_key,
         base_url=os.environ.get("THREATSTREAM_BASE_URL") or DEFAULT_BASE_URL,
         search_path=os.environ.get("THREATSTREAM_THREAT_MODEL_SEARCH_PATH") or DEFAULT_SEARCH_PATH,
+        vulnerability_path=os.environ.get("THREATSTREAM_VULNERABILITY_PATH") or DEFAULT_VULNERABILITY_PATH,
         vulnerability_tag_path_template=(
             os.environ.get("THREATSTREAM_VULNERABILITY_TAG_PATH_TEMPLATE")
             or DEFAULT_VULNERABILITY_TAG_PATH_TEMPLATE
@@ -150,6 +191,7 @@ def assess_impacted_models(args: argparse.Namespace) -> dict[str, Any]:
         organization_id=organization_id,
         limit=args.limit,
         tag_search_mode=tag_search_mode,
+        search_endpoint=search_endpoint,
     )
 
     results: list[dict[str, Any]] = []
@@ -177,6 +219,7 @@ def assess_impacted_models(args: argparse.Namespace) -> dict[str, Any]:
     return {
         "marker_tag": marker_tag,
         "tag_search_mode": tag_search_mode,
+        "search_endpoint": search_endpoint,
         "organization_id": organization_id,
         "apply_tags": args.apply_tags,
         "count": len(results),
@@ -240,6 +283,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         choices=["exact", "contains"],
         default=None,
         help="Use exact tags.name filtering or keyword contains fallback. Default: exact.",
+    )
+    parser.add_argument(
+        "--search-endpoint",
+        choices=["vulnerability", "threat_model_search"],
+        default=None,
+        help="Endpoint used to discover candidate CVE models. Default: vulnerability.",
     )
     parser.add_argument("--organization-id", default=None, help="Optional org ID filter for ThreatStream threat model search.")
     parser.add_argument("--limit", type=int, default=0, help="ThreatStream search limit. Default: 0, API max page.")

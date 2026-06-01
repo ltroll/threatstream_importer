@@ -347,6 +347,7 @@ Relevant `.env` settings:
 ```bash
 IMPACT_MARKER_TAG=sample_impacted
 IMPACT_TAG_SEARCH_MODE=exact
+IMPACT_SEARCH_ENDPOINT=vulnerability
 IMPACT_ORGANIZATION_ID=
 IMPACTED_TAG_PREFIX=impacted
 IMPACTED_DOMAIN_TAG_PREFIX=impacted_domain
@@ -362,3 +363,7 @@ By default, the script uses ThreatStream's documented exact tag filter: `tags.na
 If you need substring matching, run with `--tag-search-mode contains` or set
 `IMPACT_TAG_SEARCH_MODE=contains`; that uses ThreatStream keyword search and then filters returned
 models locally by tag-name substring.
+
+The default discovery endpoint is `/api/v1/vulnerability/`, which fetches vulnerability models and
+filters their returned `tags` locally. Set `IMPACT_SEARCH_ENDPOINT=threat_model_search` to use
+`/api/v1/threat_model_search/` instead.
