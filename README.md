@@ -377,3 +377,18 @@ filters their returned `tags` locally. Set `IMPACT_SEARCH_ENDPOINT=threat_model_
 `/api/v1/threat_model_search/` instead.
 The vulnerability endpoint is paged with `IMPACT_PAGE_SIZE` and `IMPACT_MAX_PAGES`; this avoids
 large `limit=0` requests that can fail on some tenants.
+
+## Threat Model Tag Search
+
+`search_threat_models_by_tag.py` searches ThreatStream Threat Model entities by tag and returns the
+matching model list.
+
+```bash
+python3 search_threat_models_by_tag.py --tag sample_impacted
+```
+
+Print the raw ThreatStream response:
+
+```bash
+python3 search_threat_models_by_tag.py --tag sample_impacted --raw
+```
