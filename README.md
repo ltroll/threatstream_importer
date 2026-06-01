@@ -270,3 +270,46 @@ is optional for this script and is not set by default.
 Set `NVD_TAG_OVERRIDE=company_nvd_sync,pir-004` to apply comma-separated org-specific tags.
 The sync writes the NVD description, CVSS scores, CWE IDs, published/modified dates, status, and
 reference links into the ThreatStream vulnerability description.
+
+## Vulnerability Plugin Query
+
+`vuln_plugin_query.py` calls a ThreatStream integration transform for one or more CVEs and returns a
+parsed summary of the CVE summary and vulnerable asset tables.
+
+Query one CVE:
+
+```bash
+python3 vuln_plugin_query.py CVE-2025-14847
+```
+
+Query multiple CVEs:
+
+```bash
+python3 vuln_plugin_query.py CVE-2025-14847,CVE-2026-41017
+```
+
+Print the raw ThreatStream transform response:
+
+```bash
+python3 vuln_plugin_query.py CVE-2025-14847 --raw
+```
+
+Import from another script:
+
+```python
+from vuln_plugin_query import query_vulnerability_plugin
+
+result = query_vulnerability_plugin("CVE-2025-14847")
+print(result["summary"])
+```
+
+Relevant `.env` settings:
+
+```bash
+THREATSTREAM_TRANSFORM_PATH=/api/v1/integration_package/transform/
+THREATSTREAM_VULN_TRANSFORM_ID=4425
+```
+
+The script uses `THREATSTREAM_USERNAME` and `THREATSTREAM_API_KEY` by default. If this transform
+endpoint only accepts UI-backed auth in your tenant, set `THREATSTREAM_SESSION_COOKIE` and
+`THREATSTREAM_CSRF_TOKEN` in `.env` instead.
