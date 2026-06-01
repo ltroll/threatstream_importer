@@ -358,15 +358,20 @@ def build_query_plan(
     tag_search_mode: str,
     search_endpoint: str,
 ) -> dict[str, Any]:
+    base_url = (os.environ.get("THREATSTREAM_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
     if search_endpoint == "vulnerability":
         page_limit = limit if limit and limit > 0 else page_size
         first_query: dict[str, Any] = {"limit": page_limit, "offset": 0}
         if organization_id:
             first_query["organization_id"] = organization_id
+        path = os.environ.get("THREATSTREAM_VULNERABILITY_PATH") or DEFAULT_VULNERABILITY_PATH
+        url = _build_url(base_url, path, first_query)
         return {
             "search_endpoint": search_endpoint,
             "method": "GET",
-            "path": os.environ.get("THREATSTREAM_VULNERABILITY_PATH") or DEFAULT_VULNERABILITY_PATH,
+            "path": path,
+            "url": url,
+            "curl": _curl_for_get(url),
             "first_query": first_query,
             "pagination": {
                 "enabled": not bool(limit and limit > 0),
@@ -389,11 +394,15 @@ def build_query_plan(
         raise ValueError("--tag-search-mode must be exact or contains")
     if organization_id:
         query["organization_id"] = organization_id
+    path = os.environ.get("THREATSTREAM_THREAT_MODEL_SEARCH_PATH") or DEFAULT_SEARCH_PATH
+    url = _build_url(base_url, path, query)
 
     return {
         "search_endpoint": search_endpoint,
         "method": "GET",
-        "path": os.environ.get("THREATSTREAM_THREAT_MODEL_SEARCH_PATH") or DEFAULT_SEARCH_PATH,
+        "path": path,
+        "url": url,
+        "curl": _curl_for_get(url),
         "query": query,
         "local_filter": {
             "model_name_pattern": CVE_PATTERN.pattern,
@@ -401,6 +410,15 @@ def build_query_plan(
             "marker_tag": marker_tag,
         },
     }
+
+
+def _curl_for_get(url: str) -> str:
+    return (
+        "curl "
+        "-H 'Accept: application/json' "
+        "-H 'Authorization: apikey <username>:<api_key>' "
+        f"'{url}'"
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
