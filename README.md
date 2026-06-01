@@ -444,6 +444,15 @@ python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulner
 `--tag-found` applies when exposure count is greater than zero. `--tag-missed` applies when exposure
 count is zero. `--tag-all` applies to every returned model.
 
+If exposure is found from a non-vulnerability model such as a Threat Bulletin, also apply the same
+result tags to matching vulnerability models named with that CVE:
+
+```bash
+python3 search_threat_models_by_tag.py --tag sample_impacted --model-type tipreport \
+  --tag-exposed \
+  --tag-vuln-models
+```
+
 Skip models already tagged as processed:
 
 ```bash

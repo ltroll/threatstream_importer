@@ -105,6 +105,53 @@ def search_threat_models_by_tag(
     }
 
 
+def search_vulnerability_models_by_cve(
+    cve_id: str,
+    *,
+    limit: int = 100,
+    env_file: str | None = None,
+) -> list[dict[str, Any]]:
+    """Find vulnerability threat models whose name exactly matches a CVE."""
+
+    load_dotenv(env_file)
+    resolved_username = os.environ.get("THREATSTREAM_USERNAME")
+    resolved_api_key = os.environ.get("THREATSTREAM_API_KEY")
+    if not resolved_username or not resolved_api_key:
+        raise ThreatStreamError("Missing THREATSTREAM_USERNAME or THREATSTREAM_API_KEY in environment or .env")
+
+    base_url = (os.environ.get("THREATSTREAM_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
+    search_path = os.environ.get("THREATSTREAM_THREAT_MODEL_SEARCH_PATH") or DEFAULT_SEARCH_PATH
+    query = {
+        "model_type": "vulnerability",
+        "name": cve_id,
+        "limit": limit,
+    }
+    url = _build_url(base_url, search_path, query)
+    request = Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "Authorization": f"apikey {resolved_username}:{resolved_api_key}",
+            "User-Agent": "threatstream-tag-search/1.0",
+        },
+    )
+    try:
+        with urlopen(request, timeout=30) as response:
+            body = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        text = exc.read().decode("utf-8", errors="replace")
+        raise ThreatModelSearchError(f"ThreatStream vulnerability search returned HTTP {exc.code}: {text}") from exc
+    except URLError as exc:
+        raise ThreatModelSearchError(f"Could not reach ThreatStream: {exc.reason}") from exc
+    except json.JSONDecodeError as exc:
+        raise ThreatModelSearchError("ThreatStream vulnerability search returned non-JSON response") from exc
+
+    objects = body.get("objects", body if isinstance(body, list) else [])
+    if not isinstance(objects, list):
+        raise ThreatModelSearchError("ThreatStream vulnerability search response did not contain a model list")
+    return [model for model in objects if str(model.get("name", "")).upper() == cve_id.upper()]
+
+
 def search_threat_models_by_tags(
     tags: str | list[str],
     *,
@@ -235,6 +282,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--tag-missed", default=None, help="Comma-separated tags to add when exposure count is zero.")
     parser.add_argument("--tag-all", default=None, help="Comma-separated tags to add to every returned model.")
     parser.add_argument(
+        "--tag-vuln-models",
+        action="store_true",
+        help="When exposure is found from another model type, also tag vulnerability models with the same CVE.",
+    )
+    parser.add_argument(
         "--skip-if-tagged",
         default=None,
         help="Comma-separated tag names. Skip exposure lookup/result tagging when a model already has any of these tags.",
@@ -269,6 +321,7 @@ def main(argv: list[str] | None = None) -> int:
                 tag_found=args.tag_found,
                 tag_missed=args.tag_missed,
                 skip_if_tagged=args.skip_if_tagged,
+                tag_vuln_models=args.tag_vuln_models,
             )
     except (ThreatStreamError, ThreatModelSearchError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -289,6 +342,7 @@ def add_exposure_lookups(
     tag_found: str | None = None,
     tag_missed: str | None = None,
     skip_if_tagged: str | None = None,
+    tag_vuln_models: bool = False,
 ) -> None:
     tag_prefix = os.environ.get("EXPOSED_DEVICES_TAG_PREFIX") or DEFAULT_EXPOSED_TAG_PREFIX
     tag_tlp = os.environ.get("EXPOSED_DEVICES_TAG_TLP") or DEFAULT_TAG_TLP
@@ -323,12 +377,20 @@ def add_exposure_lookups(
             "asset_count": asset_count,
             "summary": plugin_result["summary"],
         }
+        result_tags: list[dict[str, str]] = []
         if tag_exposed and asset_count > 0:
-            tags = _tag_objects([f"{tag_prefix}:{asset_count}"], tag_tlp)
-            threat_model["exposure_lookup"]["tag_response"] = add_tags_to_threat_model(threat_model, tags)
+            result_tags.extend(_tag_objects([f"{tag_prefix}:{asset_count}"], tag_tlp))
         static_result_tags = _tags_for_exposure_count(asset_count, tag_found, tag_missed, tag_tlp)
-        if static_result_tags:
-            threat_model["exposure_lookup"]["static_tag_response"] = add_tags_to_threat_model(threat_model, static_result_tags)
+        result_tags.extend(static_result_tags)
+        if result_tags:
+            threat_model["exposure_lookup"]["tag_response"] = add_tags_to_threat_model(threat_model, result_tags)
+        if tag_vuln_models and asset_count > 0 and result_tags:
+            threat_model["exposure_lookup"]["vulnerability_tag_responses"] = tag_matching_vulnerability_models(
+                cve_id,
+                result_tags,
+                source_threat_model=threat_model,
+                env_file=env_file,
+            )
 
 
 def add_static_tags(threat_models: list[dict[str, Any]], tag_value: str) -> None:
@@ -336,6 +398,28 @@ def add_static_tags(threat_models: list[dict[str, Any]], tag_value: str) -> None
     tags = _tag_objects(_parse_tag_names(tag_value), tag_tlp)
     for threat_model in threat_models:
         threat_model["tag_all_response"] = add_tags_to_threat_model(threat_model, tags)
+
+
+def tag_matching_vulnerability_models(
+    cve_id: str,
+    tags: list[dict[str, str]],
+    *,
+    source_threat_model: dict[str, Any],
+    env_file: str | None,
+) -> list[dict[str, Any]]:
+    source_id = _threat_model_id(source_threat_model)
+    responses: list[dict[str, Any]] = []
+    for vulnerability_model in search_vulnerability_models_by_cve(cve_id, env_file=env_file):
+        if _threat_model_id(vulnerability_model) == source_id:
+            continue
+        responses.append(
+            {
+                "threat_model_id": _threat_model_id(vulnerability_model),
+                "name": vulnerability_model.get("name"),
+                "response": add_tags_to_threat_model(vulnerability_model, tags),
+            }
+        )
+    return responses
 
 
 def _cve_from_name(name: str) -> str | None:
