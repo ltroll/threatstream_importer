@@ -387,6 +387,12 @@ matching model list.
 python3 search_threat_models_by_tag.py --tag sample_impacted
 ```
 
+Search multiple tags in one run:
+
+```bash
+python3 search_threat_models_by_tag.py --tag criteria1,criteria2 --model-type vulnerability
+```
+
 Limit to one Threat Model type:
 
 ```bash

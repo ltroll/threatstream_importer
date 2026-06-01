@@ -91,6 +91,46 @@ def search_threat_models_by_tag(
     }
 
 
+def search_threat_models_by_tags(
+    tags: str | list[str],
+    *,
+    model_type: str | None = None,
+    modified_minutes: int | None = None,
+    limit: int = 100,
+    env_file: str | None = None,
+) -> dict[str, Any]:
+    """Search once per tag and merge duplicate threat models."""
+
+    tag_names = _parse_tag_names(tags) if isinstance(tags, str) else tags
+    merged: dict[str, dict[str, Any]] = {}
+    searches: list[dict[str, Any]] = []
+
+    for tag in tag_names:
+        result = search_threat_models_by_tag(
+            tag,
+            model_type=model_type,
+            modified_minutes=modified_minutes,
+            limit=limit,
+            env_file=env_file,
+        )
+        searches.append({"tag": tag, "query": result["query"], "url": result["url"], "count": result["count"]})
+        for threat_model in result["objects"]:
+            key = _threat_model_key(threat_model)
+            if key not in merged:
+                copied = dict(threat_model)
+                copied["matched_search_tags"] = [tag]
+                merged[key] = copied
+            elif tag not in merged[key]["matched_search_tags"]:
+                merged[key]["matched_search_tags"].append(tag)
+
+    objects = list(merged.values())
+    return {
+        "searches": searches,
+        "count": len(objects),
+        "objects": objects,
+    }
+
+
 def add_tags_to_threat_model(
     threat_model: dict[str, Any],
     tags: list[dict[str, str]],
@@ -143,7 +183,7 @@ def add_tags_to_threat_model(
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Search all ThreatStream threat models for a tag.")
-    parser.add_argument("--tag", required=True, help="Tag name to search for.")
+    parser.add_argument("--tag", required=True, help="Tag name or comma-separated tag names to search for.")
     parser.add_argument("--model-type", default=None, help="Optional Threat Model type, for example vulnerability, actor, malware, tipreport.")
     parser.add_argument("--modified-minutes", type=int, default=None, help="Only search models modified within the last N minutes.")
     parser.add_argument("--limit", type=int, default=100, help="Maximum results to return. Default: 100.")
@@ -179,7 +219,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     try:
-        result = search_threat_models_by_tag(
+        result = search_threat_models_by_tags(
             args.tag,
             model_type=args.model_type,
             modified_minutes=args.modified_minutes,
@@ -316,6 +356,13 @@ def _parse_tag_names(tag_value: str) -> list[str]:
     if not tags:
         raise ValueError("Tag arguments must include at least one tag name")
     return tags
+
+
+def _threat_model_key(threat_model: dict[str, Any]) -> str:
+    threat_model_id = _threat_model_id(threat_model)
+    if threat_model_id:
+        return f"id:{threat_model_id}"
+    return f"name:{threat_model.get('model_type', '')}:{threat_model.get('name', '')}"
 
 
 def _threatstream_datetime(value: datetime) -> str:
