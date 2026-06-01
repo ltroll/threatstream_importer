@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -14,6 +15,10 @@ from urllib.request import Request, urlopen
 
 from kev_watcher import DEFAULT_SEARCH_PATH, _build_url
 from threatstream_submit import DEFAULT_BASE_URL, ThreatStreamError, load_dotenv
+from vuln_plugin_query import CVE_PATTERN, TransformError, query_vulnerability_plugin
+
+
+CVE_IN_TEXT_PATTERN = re.compile(r"CVE-\d{4}-\d{4,19}", re.IGNORECASE)
 
 
 class ThreatModelSearchError(RuntimeError):
@@ -87,7 +92,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--model-type", default=None, help="Optional Threat Model type, for example vulnerability, actor, malware, tipreport.")
     parser.add_argument("--limit", type=int, default=100, help="Maximum results to return. Default: 100.")
     parser.add_argument("--env-file", default=None, help="Path to .env file. Defaults to .env next to scripts.")
-    parser.add_argument("--raw", action="store_true", help="Print raw ThreatStream response.")
+    parser.add_argument(
+        "--lookup-exposure",
+        action="store_true",
+        help="If a model name contains a CVE, query the vulnerability exposure integration for that CVE.",
+    )
+    parser.add_argument(
+        "--results-raw",
+        "--raw",
+        action="store_true",
+        dest="results_raw",
+        help="Print the full query/result wrapper including raw ThreatStream response.",
+    )
     return parser.parse_args(argv)
 
 
@@ -100,12 +116,43 @@ def main(argv: list[str] | None = None) -> int:
             limit=args.limit,
             env_file=args.env_file,
         )
+        if args.lookup_exposure:
+            add_exposure_lookups(result["objects"], env_file=args.env_file)
     except (ThreatStreamError, ThreatModelSearchError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+    except (TransformError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
-    print(json.dumps(result["raw"] if args.raw else result, indent=2, sort_keys=True))
+    print(json.dumps(result if args.results_raw else result["objects"], indent=2, sort_keys=True))
     return 0
+
+
+def add_exposure_lookups(threat_models: list[dict[str, Any]], *, env_file: str | None = None) -> None:
+    for threat_model in threat_models:
+        cve_id = _cve_from_name(str(threat_model.get("name", "")))
+        if not cve_id:
+            threat_model["exposure_lookup"] = {
+                "performed": False,
+                "reason": "model name did not contain a valid CVE",
+            }
+            continue
+
+        plugin_result = query_vulnerability_plugin(cve_id, env_file=env_file)
+        threat_model["exposure_lookup"] = {
+            "performed": True,
+            "cveID": cve_id,
+            "summary": plugin_result["summary"],
+        }
+
+
+def _cve_from_name(name: str) -> str | None:
+    match = CVE_IN_TEXT_PATTERN.search(name)
+    if not match:
+        return None
+    cve_id = match.group(0).upper()
+    return cve_id if CVE_PATTERN.match(cve_id) else None
 
 
 if __name__ == "__main__":

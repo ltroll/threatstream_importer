@@ -393,8 +393,14 @@ Limit to one Threat Model type:
 python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulnerability
 ```
 
-Print the raw ThreatStream response:
+Lookup exposure for matching CVE-named models:
 
 ```bash
-python3 search_threat_models_by_tag.py --tag sample_impacted --raw
+python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulnerability --lookup-exposure
+```
+
+Print the full query/result wrapper including the raw ThreatStream response:
+
+```bash
+python3 search_threat_models_by_tag.py --tag sample_impacted --results-raw
 ```
