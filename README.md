@@ -405,6 +405,10 @@ Lookup exposure for matching CVE-named models:
 python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulnerability --lookup-exposure
 ```
 
+Exposure lookup checks the model name first, then tag names. This supports Threat Bulletins or other
+models tagged like `cve:CVE-2025-14847`; if no CVE is found in the name or tags, the script skips
+lookup for that model and continues.
+
 Only search models modified in the last 10 minutes, useful for cron:
 
 ```bash
