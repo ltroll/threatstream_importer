@@ -399,6 +399,15 @@ Lookup exposure for matching CVE-named models:
 python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulnerability --lookup-exposure
 ```
 
+Tag exposed devices when exposure lookup finds impacted assets:
+
+```bash
+python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulnerability --tag-exposed
+```
+
+With the default prefix, two exposed devices adds `exposed-devices:2`. No tag is added when the
+exposed device count is zero. Override the prefix with `EXPOSED_DEVICES_TAG_PREFIX`.
+
 Print the full query/result wrapper including the raw ThreatStream response:
 
 ```bash
