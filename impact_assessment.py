@@ -32,6 +32,8 @@ DEFAULT_IMPACTED_DOMAIN_TAG_PREFIX = "impacted_domain"
 DEFAULT_TAG_SEPARATOR = ":"
 DEFAULT_TAG_SEARCH_MODE = "exact"
 DEFAULT_SEARCH_ENDPOINT = "vulnerability"
+DEFAULT_PAGE_SIZE = 100
+DEFAULT_MAX_PAGES = 20
 
 
 class ImpactAssessmentError(RuntimeError):
@@ -68,6 +70,8 @@ class ThreatModelClient:
         *,
         organization_id: str | None = None,
         limit: int = 0,
+        page_size: int = DEFAULT_PAGE_SIZE,
+        max_pages: int = DEFAULT_MAX_PAGES,
         tag_search_mode: str = DEFAULT_TAG_SEARCH_MODE,
         search_endpoint: str = DEFAULT_SEARCH_ENDPOINT,
     ) -> list[dict[str, Any]]:
@@ -76,6 +80,8 @@ class ThreatModelClient:
                 marker_tag,
                 organization_id=organization_id,
                 limit=limit,
+                page_size=page_size,
+                max_pages=max_pages,
                 tag_search_mode=tag_search_mode,
             )
         if search_endpoint != "threat_model_search":
@@ -113,23 +119,40 @@ class ThreatModelClient:
         *,
         organization_id: str | None,
         limit: int,
+        page_size: int,
+        max_pages: int,
         tag_search_mode: str,
     ) -> list[dict[str, Any]]:
-        query: dict[str, Any] = {"limit": limit}
-        if organization_id:
-            query["organization_id"] = organization_id
+        page_limit = limit if limit and limit > 0 else page_size
+        offset = 0
+        pages_read = 0
+        matches: list[dict[str, Any]] = []
 
-        response = self._request("GET", self.vulnerability_path, query=query)
-        objects = response.get("objects", response if isinstance(response, list) else [])
-        if not isinstance(objects, list):
-            raise ThreatStreamError("ThreatStream vulnerability response did not contain an objects list")
+        while pages_read < max_pages:
+            query: dict[str, Any] = {"limit": page_limit, "offset": offset}
+            if organization_id:
+                query["organization_id"] = organization_id
 
-        return [
-            threat_model
-            for threat_model in objects
-            if CVE_PATTERN.match(str(threat_model.get("name", "")))
-            and _tag_matches(threat_model, marker_tag, tag_search_mode)
-        ]
+            response = self._request("GET", self.vulnerability_path, query=query)
+            objects = response.get("objects", response if isinstance(response, list) else [])
+            if not isinstance(objects, list):
+                raise ThreatStreamError("ThreatStream vulnerability response did not contain an objects list")
+
+            matches.extend(
+                threat_model
+                for threat_model in objects
+                if CVE_PATTERN.match(str(threat_model.get("name", "")))
+                and _tag_matches(threat_model, marker_tag, tag_search_mode)
+            )
+            pages_read += 1
+
+            if limit and limit > 0:
+                break
+            if len(objects) < page_limit:
+                break
+            offset += page_limit
+
+        return matches
 
     def add_tags_to_vulnerability(self, vulnerability: dict[str, Any], tags: list[dict[str, str]]) -> dict[str, Any]:
         vulnerability_id = _threat_model_id(vulnerability)
@@ -169,6 +192,20 @@ def assess_impacted_models(args: argparse.Namespace) -> dict[str, Any]:
     tag_search_mode = args.tag_search_mode or os.environ.get("IMPACT_TAG_SEARCH_MODE") or DEFAULT_TAG_SEARCH_MODE
     search_endpoint = args.search_endpoint or os.environ.get("IMPACT_SEARCH_ENDPOINT") or DEFAULT_SEARCH_ENDPOINT
     organization_id = args.organization_id or os.environ.get("IMPACT_ORGANIZATION_ID") or os.environ.get("NVD_ORGANIZATION_ID")
+    page_size = args.page_size or int(os.environ.get("IMPACT_PAGE_SIZE", DEFAULT_PAGE_SIZE))
+    max_pages = args.max_pages or int(os.environ.get("IMPACT_MAX_PAGES", DEFAULT_MAX_PAGES))
+    query_plan = build_query_plan(
+        marker_tag=marker_tag,
+        organization_id=organization_id,
+        limit=args.limit,
+        page_size=page_size,
+        max_pages=max_pages,
+        tag_search_mode=tag_search_mode,
+        search_endpoint=search_endpoint,
+    )
+
+    if args.show_query:
+        return query_plan
 
     username = os.environ.get("THREATSTREAM_USERNAME")
     api_key = os.environ.get("THREATSTREAM_API_KEY")
@@ -190,6 +227,8 @@ def assess_impacted_models(args: argparse.Namespace) -> dict[str, Any]:
         marker_tag,
         organization_id=organization_id,
         limit=args.limit,
+        page_size=page_size,
+        max_pages=max_pages,
         tag_search_mode=tag_search_mode,
         search_endpoint=search_endpoint,
     )
@@ -221,6 +260,8 @@ def assess_impacted_models(args: argparse.Namespace) -> dict[str, Any]:
         "tag_search_mode": tag_search_mode,
         "search_endpoint": search_endpoint,
         "organization_id": organization_id,
+        "page_size": page_size,
+        "max_pages": max_pages,
         "apply_tags": args.apply_tags,
         "count": len(results),
         "results": results,
@@ -291,7 +332,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Endpoint used to discover candidate CVE models. Default: vulnerability.",
     )
     parser.add_argument("--organization-id", default=None, help="Optional org ID filter for ThreatStream threat model search.")
-    parser.add_argument("--limit", type=int, default=0, help="ThreatStream search limit. Default: 0, API max page.")
+    parser.add_argument("--limit", type=int, default=0, help="ThreatStream single-page limit. If set, disables pagination.")
+    parser.add_argument("--page-size", type=int, default=None, help=f"Vulnerability endpoint page size. Default: {DEFAULT_PAGE_SIZE}.")
+    parser.add_argument("--max-pages", type=int, default=None, help=f"Maximum vulnerability endpoint pages to scan. Default: {DEFAULT_MAX_PAGES}.")
+    parser.add_argument("--show-query", action="store_true", help="Print the planned ThreatStream query and exit.")
     parser.add_argument("--apply-tags", action="store_true", help="Apply impact result tags back to each threat model.")
     parser.add_argument("--impacted-prefix", default=None, help=f"Impacted count tag prefix. Default: {DEFAULT_IMPACTED_TAG_PREFIX}")
     parser.add_argument(
@@ -302,6 +346,61 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--tag-separator", default=None, help=f"Tag prefix/value separator. Default: {DEFAULT_TAG_SEPARATOR}")
     parser.add_argument("--tag-tlp", default=None, help=f"Tag TLP for applied tags. Default: {DEFAULT_TAG_TLP}")
     return parser.parse_args(argv)
+
+
+def build_query_plan(
+    *,
+    marker_tag: str,
+    organization_id: str | None,
+    limit: int,
+    page_size: int,
+    max_pages: int,
+    tag_search_mode: str,
+    search_endpoint: str,
+) -> dict[str, Any]:
+    if search_endpoint == "vulnerability":
+        page_limit = limit if limit and limit > 0 else page_size
+        first_query: dict[str, Any] = {"limit": page_limit, "offset": 0}
+        if organization_id:
+            first_query["organization_id"] = organization_id
+        return {
+            "search_endpoint": search_endpoint,
+            "method": "GET",
+            "path": os.environ.get("THREATSTREAM_VULNERABILITY_PATH") or DEFAULT_VULNERABILITY_PATH,
+            "first_query": first_query,
+            "pagination": {
+                "enabled": not bool(limit and limit > 0),
+                "page_size": page_size,
+                "max_pages": max_pages,
+            },
+            "local_filter": {
+                "model_name_pattern": CVE_PATTERN.pattern,
+                "tag_search_mode": tag_search_mode,
+                "marker_tag": marker_tag,
+            },
+        }
+
+    query: dict[str, Any] = {"model_type": "vulnerability", "limit": limit}
+    if tag_search_mode == "exact":
+        query["tags.name"] = marker_tag
+    elif tag_search_mode == "contains":
+        query["value"] = marker_tag
+    else:
+        raise ValueError("--tag-search-mode must be exact or contains")
+    if organization_id:
+        query["organization_id"] = organization_id
+
+    return {
+        "search_endpoint": search_endpoint,
+        "method": "GET",
+        "path": os.environ.get("THREATSTREAM_THREAT_MODEL_SEARCH_PATH") or DEFAULT_SEARCH_PATH,
+        "query": query,
+        "local_filter": {
+            "model_name_pattern": CVE_PATTERN.pattern,
+            "tag_search_mode": tag_search_mode,
+            "marker_tag": marker_tag,
+        },
+    }
 
 
 def main(argv: list[str] | None = None) -> int:

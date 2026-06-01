@@ -326,6 +326,12 @@ Run without writing tags:
 python3 impact_assessment.py
 ```
 
+Display the planned ThreatStream query without executing it:
+
+```bash
+python3 impact_assessment.py --marker-tag example --show-query
+```
+
 Apply impact result tags back to each threat model:
 
 ```bash
@@ -348,6 +354,8 @@ Relevant `.env` settings:
 IMPACT_MARKER_TAG=sample_impacted
 IMPACT_TAG_SEARCH_MODE=exact
 IMPACT_SEARCH_ENDPOINT=vulnerability
+IMPACT_PAGE_SIZE=100
+IMPACT_MAX_PAGES=20
 IMPACT_ORGANIZATION_ID=
 IMPACTED_TAG_PREFIX=impacted
 IMPACTED_DOMAIN_TAG_PREFIX=impacted_domain
@@ -367,3 +375,5 @@ models locally by tag-name substring.
 The default discovery endpoint is `/api/v1/vulnerability/`, which fetches vulnerability models and
 filters their returned `tags` locally. Set `IMPACT_SEARCH_ENDPOINT=threat_model_search` to use
 `/api/v1/threat_model_search/` instead.
+The vulnerability endpoint is paged with `IMPACT_PAGE_SIZE` and `IMPACT_MAX_PAGES`; this avoids
+large `limit=0` requests that can fail on some tenants.
