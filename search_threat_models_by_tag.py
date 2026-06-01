@@ -157,6 +157,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--tag-missed", default=None, help="Comma-separated tags to add when exposure count is zero.")
     parser.add_argument("--tag-all", default=None, help="Comma-separated tags to add to every returned model.")
     parser.add_argument(
+        "--skip-if-tagged",
+        default=None,
+        help="Comma-separated tag names. Skip exposure lookup/result tagging when a model already has any of these tags.",
+    )
+    parser.add_argument(
         "--results-raw",
         "--raw",
         action="store_true",
@@ -184,6 +189,7 @@ def main(argv: list[str] | None = None) -> int:
                 tag_exposed=args.tag_exposed,
                 tag_found=args.tag_found,
                 tag_missed=args.tag_missed,
+                skip_if_tagged=args.skip_if_tagged,
             )
     except (ThreatStreamError, ThreatModelSearchError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -203,10 +209,22 @@ def add_exposure_lookups(
     tag_exposed: bool = False,
     tag_found: str | None = None,
     tag_missed: str | None = None,
+    skip_if_tagged: str | None = None,
 ) -> None:
     tag_prefix = os.environ.get("EXPOSED_DEVICES_TAG_PREFIX") or DEFAULT_EXPOSED_TAG_PREFIX
     tag_tlp = os.environ.get("EXPOSED_DEVICES_TAG_TLP") or DEFAULT_TAG_TLP
+    skip_tags = set(_parse_tag_names(skip_if_tagged)) if skip_if_tagged else set()
     for threat_model in threat_models:
+        present_tags = set(_tag_names(threat_model))
+        matched_skip_tags = sorted(skip_tags.intersection(present_tags))
+        if matched_skip_tags:
+            threat_model["exposure_lookup"] = {
+                "performed": False,
+                "reason": "skipped because model already has a skip tag",
+                "skip_tags": matched_skip_tags,
+            }
+            continue
+
         cve_id = _cve_from_name(str(threat_model.get("name", "")))
         if not cve_id:
             threat_model["exposure_lookup"] = {
@@ -257,6 +275,21 @@ def _asset_count(plugin_summary: dict[str, Any]) -> int:
         if isinstance(assets, list):
             count = max(count, len(assets))
     return count
+
+
+def _tag_names(threat_model: dict[str, Any]) -> list[str]:
+    tags = threat_model.get("tags", [])
+    if isinstance(tags, list):
+        names = []
+        for tag in tags:
+            if isinstance(tag, dict) and tag.get("name"):
+                names.append(str(tag["name"]))
+            elif isinstance(tag, str):
+                names.append(tag)
+        return names
+    if isinstance(tags, str):
+        return [tag.strip() for tag in tags.split(",") if tag.strip()]
+    return []
 
 
 def _tags_for_exposure_count(

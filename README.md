@@ -420,6 +420,17 @@ python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulner
 `--tag-found` applies when exposure count is greater than zero. `--tag-missed` applies when exposure
 count is zero. `--tag-all` applies to every returned model.
 
+Skip models already tagged as processed:
+
+```bash
+python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulnerability \
+  --lookup-exposure \
+  --skip-if-tagged automated-lookup-performed
+```
+
+`--skip-if-tagged` accepts comma-separated tag names and skips exposure lookup/result tagging for
+models that already have any of those tags.
+
 Print the full query/result wrapper including the raw ThreatStream response:
 
 ```bash
