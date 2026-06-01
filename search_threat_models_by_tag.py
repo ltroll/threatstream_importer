@@ -271,19 +271,22 @@ def add_exposure_lookups(
             }
             continue
 
-        cve_id = _cve_from_name(str(threat_model.get("name", "")))
-        if not cve_id:
+        cve_match = _cve_from_threat_model(threat_model)
+        if not cve_match:
             threat_model["exposure_lookup"] = {
                 "performed": False,
-                "reason": "model name did not contain a valid CVE",
+                "reason": "model name and tags did not contain a valid CVE",
             }
             continue
 
+        cve_id = cve_match["cveID"]
         plugin_result = query_vulnerability_plugin(cve_id, env_file=env_file)
         asset_count = _asset_count(plugin_result["summary"])
         threat_model["exposure_lookup"] = {
             "performed": True,
             "cveID": cve_id,
+            "cve_source": cve_match["source"],
+            "cve_source_value": cve_match["value"],
             "asset_count": asset_count,
             "summary": plugin_result["summary"],
         }
@@ -308,6 +311,19 @@ def _cve_from_name(name: str) -> str | None:
         return None
     cve_id = match.group(0).upper()
     return cve_id if CVE_PATTERN.match(cve_id) else None
+
+
+def _cve_from_threat_model(threat_model: dict[str, Any]) -> dict[str, str] | None:
+    name = str(threat_model.get("name", ""))
+    cve_id = _cve_from_name(name)
+    if cve_id:
+        return {"cveID": cve_id, "source": "name", "value": name}
+
+    for tag in _tag_names(threat_model):
+        cve_id = _cve_from_name(tag)
+        if cve_id:
+            return {"cveID": cve_id, "source": "tag", "value": tag}
+    return None
 
 
 def _asset_count(plugin_summary: dict[str, Any]) -> int:
