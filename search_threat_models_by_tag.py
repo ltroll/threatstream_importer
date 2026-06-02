@@ -21,6 +21,9 @@ from vuln_plugin_query import CVE_PATTERN, TransformError, query_vulnerability_p
 
 CVE_IN_TEXT_PATTERN = re.compile(r"CVE-\d{4}-\d{4,19}", re.IGNORECASE)
 DEFAULT_EXPOSED_TAG_PREFIX = "exposed-devices"
+DEFAULT_VULN_SEVERITY_TAG_PREFIX = "vuln_severity"
+DEFAULT_VULN_CVSS3_TAG_PREFIX = "vuln_cvss3_score"
+DEFAULT_VULN_EXPLOIT_TAG_PREFIX = "vuln_exploit_available"
 DEFAULT_THREAT_MODEL_TAG_PATH_TEMPLATE = "/api/v1/{entity_type}/{id}/tag/"
 MODEL_TYPE_TO_TAG_ENTITY = {
     "actor": "actor",
@@ -378,13 +381,14 @@ def add_exposure_lookups(
             "summary": plugin_result["summary"],
         }
         result_tags: list[dict[str, str]] = []
-        if tag_exposed and asset_count > 0:
+        if tag_exposed:
             result_tags.extend(_tag_objects([f"{tag_prefix}:{asset_count}"], tag_tlp))
+        result_tags.extend(_vuln_summary_tags(plugin_result["summary"], tag_tlp))
         static_result_tags = _tags_for_exposure_count(asset_count, tag_found, tag_missed, tag_tlp)
         result_tags.extend(static_result_tags)
         if result_tags:
             threat_model["exposure_lookup"]["tag_response"] = add_tags_to_threat_model(threat_model, result_tags)
-        if tag_vuln_models and asset_count > 0 and result_tags:
+        if tag_vuln_models and result_tags:
             threat_model["exposure_lookup"]["vulnerability_tag_responses"] = tag_matching_vulnerability_models(
                 cve_id,
                 result_tags,
@@ -454,6 +458,77 @@ def _asset_count(plugin_summary: dict[str, Any]) -> int:
         if isinstance(assets, list):
             count = max(count, len(assets))
     return count
+
+
+def _vuln_summary_tags(plugin_summary: dict[str, Any], tag_tlp: str) -> list[dict[str, str]]:
+    tag_names: list[str] = []
+    severity_prefix = os.environ.get("VULN_SEVERITY_TAG_PREFIX") or DEFAULT_VULN_SEVERITY_TAG_PREFIX
+    cvss_prefix = os.environ.get("VULN_CVSS3_TAG_PREFIX") or DEFAULT_VULN_CVSS3_TAG_PREFIX
+    exploit_prefix = os.environ.get("VULN_EXPLOIT_TAG_PREFIX") or DEFAULT_VULN_EXPLOIT_TAG_PREFIX
+
+    for summary in _cve_summary_rows(plugin_summary):
+        severity = _clean_tag_value(summary.get("Severity"))
+        if severity:
+            tag_names.append(f"{severity_prefix}:{severity}")
+
+        cvss_score = _format_cvss_score(summary.get("CVSS v3 Base Score"))
+        if cvss_score:
+            tag_names.append(f"{cvss_prefix}:{cvss_score}")
+
+        exploit_available = _format_yes_no(summary.get("Exploit Available"))
+        if exploit_available:
+            tag_names.append(f"{exploit_prefix}:{exploit_available}")
+
+    return _tag_objects(_dedupe(tag_names), tag_tlp)
+
+
+def _cve_summary_rows(plugin_summary: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for transform in plugin_summary.get("transforms", []):
+        if isinstance(transform, dict) and isinstance(transform.get("cve_summary"), list):
+            rows.extend(row for row in transform["cve_summary"] if isinstance(row, dict))
+    return rows
+
+
+def _clean_tag_value(value: Any) -> str | None:
+    if value is None:
+        return None
+    cleaned = str(value).strip().lower()
+    cleaned = re.sub(r"\s+", "_", cleaned)
+    return cleaned or None
+
+
+def _format_cvss_score(value: Any) -> str | None:
+    if value is None or value == "":
+        return None
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return _clean_tag_value(value)
+    if score.is_integer():
+        return str(int(score))
+    return str(score).rstrip("0").rstrip(".")
+
+
+def _format_yes_no(value: Any) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip().lower()
+    if normalized in {"true", "yes", "y", "1"}:
+        return "yes"
+    if normalized in {"false", "no", "n", "0"}:
+        return "no"
+    return _clean_tag_value(value)
+
+
+def _dedupe(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for value in values:
+        if value not in seen:
+            seen.add(value)
+            deduped.append(value)
+    return deduped
 
 
 def _tag_names(threat_model: dict[str, Any]) -> list[str]:

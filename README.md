@@ -427,8 +427,10 @@ Tag exposed devices when exposure lookup finds impacted assets:
 python3 search_threat_models_by_tag.py --tag sample_impacted --model-type vulnerability --tag-exposed
 ```
 
-With the default prefix, two exposed devices adds `exposed-devices:2`. No tag is added when the
-exposed device count is zero. Override the prefix with `EXPOSED_DEVICES_TAG_PREFIX`.
+With the default prefix, two exposed devices adds `exposed-devices:2`; zero exposed devices adds
+`exposed-devices:0`. Override the prefix with `EXPOSED_DEVICES_TAG_PREFIX`.
+When Nessus returns CVE summary data, the script also adds tags like
+`vuln_severity:high`, `vuln_cvss3_score:9`, and `vuln_exploit_available:yes`.
 When tagging returned models, the script uses the returned model type to choose the ThreatStream tag
 endpoint, such as `/api/v1/vulnerability/<id>/tag/` or `/api/v1/tipreport/<id>/tag/`.
 
